@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -29,7 +30,13 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
     return clusterApiUrl('devnet');
   }, []);
 
-  const wallets = useMemo(() => [], []);
+  // Explicit adapters bypass Wallet Standard auto-detection conflicts.
+  // PhantomWalletAdapter + SolflareWalletAdapter create a direct bridge
+  // that the modal uses even when multiple extensions fight for window.solana.
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    []
+  );
 
   // All three providers are SSR-safe:
   // - ConnectionProvider / WalletProvider: initialise React context with defaults,
