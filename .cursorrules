@@ -1,0 +1,45 @@
+# Cursor Rules — BlockFlip
+
+## Project Context
+BlockFlip is a Solana RWA protocol for property flipping (Auction → Renovation → Sale).
+Stack: Next.js 16 App Router, TypeScript strict, Tailwind CSS v4, Shadcn/ui, Solana Web3.js.
+UI Style: Elite fintech (Brex/Ramp), Dark Mode, Solana Green #14F195.
+Goal: Top 1 Global at Colosseum Hackathon.
+
+## Code Standards
+- Always use TypeScript strict mode — no implicit `any`
+- Components: PascalCase | Functions: camelCase | Constants: UPPER_SNAKE_CASE | Files: kebab-case
+- Validate all user inputs with Zod
+- Use async/await pattern consistently
+- Keep components under 200 lines — split if larger
+- Prefer Shadcn/ui components over custom implementations
+
+## Security First (OWASP Top 10)
+- Never expose private keys, seeds, or wallet data
+- Always sanitize inputs before processing
+- Maintain security headers in middleware.ts
+- Implement rate limiting on all API routes
+- Never log sensitive user data (wallet addresses in logs only as needed)
+
+## UI/UX Rules
+- "Brutal Clarity": hide blockchain complexity from end user
+- Never use raw addresses in user-visible text without truncation + explorer link
+- Maintain dark theme with #14F195 accent consistently
+- Financial data: always show in USDC with proper formatting
+
+## Solana Specific
+- Use @solana/wallet-adapter-react for wallet connections
+- Never access window.solana directly — use wallet adapter hooks
+- Always check wallet connection before transaction actions
+- Use devnet for development, mainnet for production
+
+## Before Committing
+1. Run: npm run type-check
+2. Run: npm run build
+3. Run: npm run lint
+4. Verify: no sensitive data in diff
+5. Verify: middleware.ts security headers intact
+
+## File Structure
+src/app/ → routes | src/components/ → UI | src/lib/ → utils/security/validations
+src/data/ → mock data | src/types/ → TypeScript types | src/hooks/ → custom hooks

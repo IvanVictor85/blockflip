@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env.local
+
+# AI tool internal state (Cursor, Claude Code, etc.)
+.ai/
