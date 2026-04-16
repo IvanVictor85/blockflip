@@ -22,14 +22,12 @@ interface SolanaWalletProviderProps {
  * Solflare, …) without explicit adapter entries; wallets={[]} is intentional.
  */
 export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
-  const endpoint = useMemo(
-    () =>
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
-      clusterApiUrl(
-        process.env.NODE_ENV === 'production' ? 'mainnet-beta' : 'devnet'
-      ),
-    []
-  );
+  const endpoint = useMemo(() => {
+    const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+    // Guard against empty string — ?? only catches null/undefined
+    if (rpc && rpc.startsWith('http')) return rpc;
+    return clusterApiUrl('devnet');
+  }, []);
 
   const wallets = useMemo(() => [], []);
 
