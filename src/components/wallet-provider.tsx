@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -30,13 +30,9 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
     return clusterApiUrl('devnet');
   }, []);
 
-  // Explicit adapters bypass Wallet Standard auto-detection conflicts.
-  // PhantomWalletAdapter + SolflareWalletAdapter create a direct bridge
-  // that the modal uses even when multiple extensions fight for window.solana.
-  const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
-    []
-  );
+  // Only Phantom — reduces MessageEvent noise from Backpack/MetaMask fighting
+  // over window.solana during the Wallet Standard handshake.
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   // All three providers are SSR-safe:
   // - ConnectionProvider / WalletProvider: initialise React context with defaults,
@@ -46,6 +42,8 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
   // Keeping WalletModalProvider unconditional ensures useWalletModal() always gets
   // the real setVisible — a conditional provider would give consumers a no-op during
   // SSR/hydration, silently breaking the connect button click handler.
+  console.log('[BlockFlip][SolanaWalletProvider] mounted, endpoint:', endpoint);
+
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider

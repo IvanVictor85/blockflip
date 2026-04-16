@@ -4,8 +4,11 @@ import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { SolanaWalletProvider } from "@/components/wallet-provider";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+// Analytics/SpeedInsights temporarily disabled — ERR_BLOCKED_BY_CLIENT noise
+// was polluting the console during wallet connection debugging.
+// TODO: re-enable after wallet flow is confirmed working.
+// import { Analytics } from "@vercel/analytics/react";
+// import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "sonner";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://blockflip.io";
@@ -145,8 +148,6 @@ export default async function LocaleLayout({
     <NextIntlClientProvider locale={locale} messages={messages}>
       <SolanaWalletProvider>
         {children}
-        <Analytics />
-        <SpeedInsights />
         <Toaster
           theme="dark"
           position="bottom-right"

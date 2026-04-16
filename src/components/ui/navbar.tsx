@@ -21,7 +21,9 @@ export function Navbar() {
 
   const handleConnect = () => {
     console.log('[BlockFlip] Connect button clicked — opening wallet modal');
-    setVisible(true);
+    // 100ms gap lets the browser flush pending MessageEvents from other
+    // extensions (MetaMask/Backpack) before the modal handshake begins.
+    setTimeout(() => setVisible(true), 100);
   };
 
   const handleDisconnect = async () => {
