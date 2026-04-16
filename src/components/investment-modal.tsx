@@ -147,9 +147,20 @@ interface InvestmentModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const ASSET_NAME_KEY: Record<string, string> = {
+  'asset-001': 'asset001',
+  'asset-002': 'asset002',
+  'asset-003': 'asset003',
+  'asset-004': 'asset004',
+};
+
 export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalProps) {
   const t = useTranslations('investment');
+  const tNames = useTranslations('assetNames');
   const inputRef = useRef<HTMLInputElement>(null);
+  const nameKey = ASSET_NAME_KEY[asset.id];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const displayTitle = nameKey ? (tNames as any)(nameKey) as string : asset.title;
   const { state, walletAddress, onAmountChange, submit, reset, isProcessing, canSubmit } =
     useInvestment(asset.id, asset.minInvestment);
 
@@ -195,7 +206,7 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
             </Badge>
             <Badge className="bg-secondary border-border text-xs">{asset.tokenSymbol}</Badge>
           </div>
-          <DialogTitle className="text-xl">{asset.title}</DialogTitle>
+          <DialogTitle className="text-xl">{displayTitle}</DialogTitle>
           <DialogDescription className="text-xs">{asset.location}</DialogDescription>
         </DialogHeader>
 

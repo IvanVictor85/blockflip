@@ -24,10 +24,24 @@ const statusColors: Record<AssetStatus, { color: string; bgColor: string }> = {
   venda: { color: 'text-blue-400', bgColor: 'bg-blue-400/10 border-blue-400/30' },
 };
 
+// Maps stable asset IDs to camelCase keys in the 'assetNames' message namespace.
+// Avoids modifying the Asset type or mock data while enabling full i18n.
+const ASSET_NAME_KEY: Record<string, string> = {
+  'asset-001': 'asset001',
+  'asset-002': 'asset002',
+  'asset-003': 'asset003',
+  'asset-004': 'asset004',
+};
+
 export function AssetCard({ asset, onSelect }: AssetCardProps) {
   const t = useTranslations('assetCard');
   const tStatus = useTranslations('status');
+  const tNames = useTranslations('assetNames');
   const [investOpen, setInvestOpen] = useState(false);
+
+  const nameKey = ASSET_NAME_KEY[asset.id];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const displayTitle = nameKey ? (tNames as any)(nameKey) as string : asset.title;
 
   const status = statusColors[asset.status];
   const fundingProgress = (asset.fundingRaised / asset.fundingGoal) * 100;
@@ -79,7 +93,7 @@ export function AssetCard({ asset, onSelect }: AssetCardProps) {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-lg group-hover:text-[#14F195] transition-colors">
-                {asset.title}
+                {displayTitle}
               </h3>
               <TooltipProvider>
                 <Tooltip>

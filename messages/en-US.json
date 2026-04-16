@@ -126,6 +126,12 @@
       "certidoes": "Certificates"
     }
   },
+  "assetNames": {
+    "asset001": "Pinheiros Apartment",
+    "asset002": "Vila Madalena Townhouse",
+    "asset003": "Moema Penthouse",
+    "asset004": "Consolação Studio"
+  },
   "unitEconomics": {
     "badge": "Unit Economics",
     "title": "How Profit is Generated",

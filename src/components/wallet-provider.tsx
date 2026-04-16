@@ -46,7 +46,14 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
   // only added once the client has hydrated.
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect={false}>
+      <WalletProvider
+        wallets={wallets}
+        autoConnect={false}
+        onError={(error) => {
+          // Surfaces wallet errors that are silently swallowed by default
+          console.error('[BlockFlip][WalletProvider] error:', error.name, error.message);
+        }}
+      >
         {mounted ? (
           <WalletModalProvider>{children}</WalletModalProvider>
         ) : (

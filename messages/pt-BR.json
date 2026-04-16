@@ -126,6 +126,12 @@
       "certidoes": "Certidões"
     }
   },
+  "assetNames": {
+    "asset001": "Apartamento Pinheiros",
+    "asset002": "Sobrado Vila Madalena",
+    "asset003": "Cobertura Moema",
+    "asset004": "Studio Consolação"
+  },
   "unitEconomics": {
     "badge": "Unit Economics",
     "title": "Como o Lucro é Gerado",

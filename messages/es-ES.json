@@ -126,6 +126,12 @@
       "certidoes": "Certificados"
     }
   },
+  "assetNames": {
+    "asset001": "Apartamento Pinheiros",
+    "asset002": "Casa Vila Madalena",
+    "asset003": "Ático Moema",
+    "asset004": "Estudio Consolação"
+  },
   "unitEconomics": {
     "badge": "Unit Economics",
     "title": "Cómo se Genera el Beneficio",
