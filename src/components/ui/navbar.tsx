@@ -4,29 +4,24 @@ import { useState } from 'react';
 import { Menu, X, Wallet, LogOut } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Button } from '@/components/ui/button';
 import { LanguageSwitcher } from '@/components/language-switcher';
 
 export function Navbar() {
   const t = useTranslations('nav');
   const [isOpen, setIsOpen] = useState(false);
-  const { connected, publicKey, connect, disconnect, wallets, select } = useWallet();
+  const { connected, publicKey, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
 
   const walletAddress = publicKey?.toString() ?? null;
   const shortAddress = walletAddress
     ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
     : null;
 
-  const handleConnect = async () => {
-    try {
-      // Auto-select first detected wallet (Wallet Standard), or first in list
-      if (!connected && wallets.length > 0 && !publicKey) {
-        select(wallets[0].adapter.name);
-      }
-      await connect();
-    } catch {
-      // User cancelled or no wallet found — silently fail
-    }
+  const handleConnect = () => {
+    // Open the WalletModal — user picks the wallet; avoids WalletNotSelectedError
+    setVisible(true);
   };
 
   const handleDisconnect = async () => {
