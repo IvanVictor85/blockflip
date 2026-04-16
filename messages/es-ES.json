@@ -126,6 +126,24 @@
       "certidoes": "Certificados"
     }
   },
+  "unitEconomics": {
+    "badge": "Unit Economics",
+    "title": "Cómo se Genera el Beneficio",
+    "description": "Modelo simple y transparente: compramos barato, reformamos rápido, vendemos con prima.",
+    "step1Title": "Compra Baja",
+    "step1Description": "Inmuebles en subasta o en estado precario",
+    "step2Title": "Reforma Ágil",
+    "step2Description": "Ejecución rápida con Prueba de Construcción",
+    "step3Title": "Salida Premium",
+    "step3Description": "Venta al valor de mercado reformado",
+    "profitTitle": "Distribución del Beneficio",
+    "grossProfit": "Beneficio Bruto",
+    "netProfit": "Beneficio Neto (después de costos)",
+    "investorShare": "Inversores (90%)",
+    "protocolFee": "Protocolo (10%)",
+    "roiPrefix": "ROI para Inversor:",
+    "roiSuffix": "en <6 meses"
+  },
   "footer": {
     "docs": "Docs",
     "whitepaper": "Whitepaper",

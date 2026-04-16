@@ -126,6 +126,24 @@
       "certidoes": "Certidões"
     }
   },
+  "unitEconomics": {
+    "badge": "Unit Economics",
+    "title": "Como o Lucro é Gerado",
+    "description": "Modelo simples e transparente: compramos barato, reformamos rápido, vendemos com ágio.",
+    "step1Title": "Compra Baixa",
+    "step1Description": "Imóveis de leilão ou em estado precário",
+    "step2Title": "Reforma Ágil",
+    "step2Description": "Execução rápida com Proof of Build",
+    "step3Title": "Saída Premium",
+    "step3Description": "Venda no valor de mercado reformado",
+    "profitTitle": "Distribuição do Lucro",
+    "grossProfit": "Lucro Bruto",
+    "netProfit": "Lucro Líquido (após custos)",
+    "investorShare": "Investidores (90%)",
+    "protocolFee": "Protocolo (10%)",
+    "roiPrefix": "ROI para Investidor:",
+    "roiSuffix": "em <6 meses"
+  },
   "footer": {
     "docs": "Docs",
     "whitepaper": "Whitepaper",

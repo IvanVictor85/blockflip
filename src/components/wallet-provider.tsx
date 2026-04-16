@@ -40,14 +40,18 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
 
   const wallets = useMemo(() => [], []);
 
-  if (!mounted) return <>{children}</>;
-
+  // ConnectionProvider + WalletProvider are SSR-safe (create context with defaults,
+  // no browser APIs during render). They must always be active so that useWallet()
+  // never throws "no context". WalletModalProvider creates a DOM portal, so it is
+  // only added once the client has hydrated.
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect={false}>
-        <WalletModalProvider>
-          {children}
-        </WalletModalProvider>
+        {mounted ? (
+          <WalletModalProvider>{children}</WalletModalProvider>
+        ) : (
+          children
+        )}
       </WalletProvider>
     </ConnectionProvider>
   );

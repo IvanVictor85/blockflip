@@ -126,6 +126,24 @@
       "certidoes": "Certificates"
     }
   },
+  "unitEconomics": {
+    "badge": "Unit Economics",
+    "title": "How Profit is Generated",
+    "description": "Simple and transparent model: buy low, renovate fast, sell at a premium.",
+    "step1Title": "Buy Low",
+    "step1Description": "Auctioned properties or distressed real estate",
+    "step2Title": "Swift Renovation",
+    "step2Description": "Fast execution with on-chain Proof of Build",
+    "step3Title": "Premium Exit",
+    "step3Description": "Sell at renovated market value",
+    "profitTitle": "Profit Distribution",
+    "grossProfit": "Gross Profit",
+    "netProfit": "Net Profit (after costs)",
+    "investorShare": "Investors (90%)",
+    "protocolFee": "Protocol (10%)",
+    "roiPrefix": "Investor ROI:",
+    "roiSuffix": "in <6 months"
+  },
   "footer": {
     "docs": "Docs",
     "whitepaper": "Whitepaper",
