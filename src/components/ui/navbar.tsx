@@ -20,7 +20,7 @@ export function Navbar() {
     : null;
 
   const handleConnect = () => {
-    // Open the WalletModal — user picks the wallet; avoids WalletNotSelectedError
+    console.log('[BlockFlip] Connect button clicked — opening wallet modal');
     setVisible(true);
   };
 
