@@ -5,7 +5,7 @@
   "outputDirectory": ".next",
   "installCommand": "npm ci --production=false",
 
-  "regions": ["gru1", "iad1"],
+  "regions": ["iad1"],
 
   "functions": {
     "src/app/api/**": {
