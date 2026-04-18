@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { MessageCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -27,13 +28,15 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#14F195] flex items-center justify-center">
-              <span className="text-black font-bold text-lg">B</span>
-            </div>
-            <span className="text-xl font-bold">
-              Block<span className="text-[#14F195]">Flip</span>
-            </span>
+          <div className="flex items-center justify-center">
+            <Image
+              src="/logo-blockflip.png"
+              alt="BlockFlip"
+              width={350}
+              height={100}
+              unoptimized
+              className="h-28 w-auto object-contain"
+            />
           </div>
 
           {/* Links */}

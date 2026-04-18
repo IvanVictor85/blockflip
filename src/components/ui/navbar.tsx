@@ -1,50 +1,32 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, X, Wallet, LogOut } from 'lucide-react';
+import Image from 'next/image';
+import { Menu, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { Button } from '@/components/ui/button';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { LanguageSwitcher } from '@/components/language-switcher';
 
 export function Navbar() {
   const t = useTranslations('nav');
   const [isOpen, setIsOpen] = useState(false);
-  const { connected, publicKey, disconnect } = useWallet();
-  const { setVisible } = useWalletModal();
-
-  const walletAddress = publicKey?.toString() ?? null;
-  const shortAddress = walletAddress
-    ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
-    : null;
-
-  const handleConnect = () => {
-    // 100ms gap lets the browser flush pending MessageEvents from other
-    // extensions (MetaMask/Backpack) before the modal handshake begins.
-    setTimeout(() => setVisible(true), 100);
-  };
-
-  const handleDisconnect = async () => {
-    try {
-      await disconnect();
-    } catch {
-      // ignore
-    }
-  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
+
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#14F195] flex items-center justify-center">
-              <span className="text-black font-bold text-lg">B</span>
-            </div>
-            <span className="text-xl font-bold">
-              Block<span className="text-[#14F195]">Flip</span>
-            </span>
+          <div className="flex items-center">
+            <Image
+              src="/logo-blockflip.png"
+              alt="BlockFlip"
+              width={350}
+              height={100}
+              priority
+              unoptimized
+              className="h-28 w-auto object-contain py-1"
+            />
           </div>
 
           {/* Desktop Navigation */}
@@ -63,32 +45,18 @@ export function Navbar() {
           {/* Right side: Language Switcher + Wallet */}
           <div className="hidden md:flex items-center gap-3">
             <LanguageSwitcher />
-
-            {connected && shortAddress ? (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#14F195]/10 border border-[#14F195]/20">
-                  <div className="w-2 h-2 rounded-full bg-[#14F195] animate-pulse" />
-                  <span className="text-sm font-mono text-[#14F195]">{shortAddress}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDisconnect}
-                  className="text-muted-foreground hover:text-foreground hover:bg-secondary/60 px-2"
-                  title={t('disconnectWallet')}
-                >
-                  <LogOut className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={handleConnect}
-                className="bg-[#14F195] text-black hover:bg-[#0ED47F] font-semibold"
-              >
-                <Wallet className="w-4 h-4 mr-2" />
-                {t('connectWallet')}
-              </Button>
-            )}
+            <WalletMultiButton
+              style={{
+                background: '#14F195',
+                color: '#000',
+                borderRadius: '8px',
+                padding: '0 20px',
+                fontWeight: 'bold',
+                height: '40px',
+                fontSize: '14px',
+                textTransform: 'uppercase',
+              }}
+            />
           </div>
 
           {/* Mobile menu button */}
@@ -118,23 +86,17 @@ export function Navbar() {
 
               <div className="flex items-center justify-between pt-2 border-t border-border">
                 <LanguageSwitcher />
-                {connected && shortAddress ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-mono text-[#14F195]">{shortAddress}</span>
-                    <Button variant="ghost" size="sm" onClick={handleDisconnect} className="px-2">
-                      <LogOut className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={handleConnect}
-                    className="bg-[#14F195] text-black hover:bg-[#0ED47F] font-semibold"
-                    size="sm"
-                  >
-                    <Wallet className="w-4 h-4 mr-2" />
-                    {t('connectWallet')}
-                  </Button>
-                )}
+                <WalletMultiButton
+                  style={{
+                    background: '#14F195',
+                    color: '#000',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    height: '2.25rem',
+                    padding: '0 0.75rem',
+                  }}
+                />
               </div>
             </div>
           </div>

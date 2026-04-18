@@ -17,7 +17,7 @@
       "purpose": "any"
     },
     {
-      "src": "/apple-icon",
+      "src": "/logo-blockflip.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any maskable"

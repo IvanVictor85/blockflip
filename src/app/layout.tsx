@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 // Root-level metadata — ensures manifest link is present for all routes,
 // including the root path before the locale middleware resolves.
 export const metadata: Metadata = {
-  manifest: "https://blockflip.vercel.app/manifest.json",
+  manifest: "/manifest.json",
 };
 
 // Viewport must stay in root layout for correct mobile rendering

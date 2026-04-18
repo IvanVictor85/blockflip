@@ -34,7 +34,9 @@ export function proxy(request: NextRequest) {
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://*.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
+      // https: covers fonts.gstatic.com, fonts.googleapis.com and any CDN
+      // the wallet adapter's DM Sans @import may resolve from (avoids whack-a-mole)
+      "font-src 'self' data: https:",
       // Solana RPCs (http + wss), Phantom, Solflare, Backpack, Vercel Analytics
       "connect-src 'self'" +
         " https://api.mainnet-beta.solana.com wss://api.mainnet-beta.solana.com" +
@@ -55,5 +57,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  // Exclude: API routes, Next.js internals, and any static file with an extension
+  // (images, fonts, manifests, robots.txt, etc.) so next-intl never intercepts them.
+  matcher: '/((?!api|_next|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|json|txt|xml|woff|woff2|ttf|eot)$).*)',
 };

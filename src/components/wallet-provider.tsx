@@ -37,7 +37,7 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider
         wallets={wallets}
-        autoConnect={false}
+        autoConnect={true}
         onError={(error) => {
           console.error('[BlockFlip][WalletProvider] error:', error.name, error.message);
         }}
