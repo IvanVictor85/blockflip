@@ -103,7 +103,7 @@ export async function generateMetadata({
       description,
       images: ["/opengraph-image"],
     },
-    manifest: "/manifest.json",
+    // manifest declared in root layout only — avoids /en-US/manifest.json 404
     icons: {
       icon: [
         { url: "/icon", type: "image/png", sizes: "32x32" },
