@@ -24,7 +24,8 @@ export function proxy(request: NextRequest) {
   }
 
   // OWASP: Injection — Content Security Policy
-  // unsafe-eval required by Solana wallet adapters
+  // unsafe-eval required by Solana wallet adapters (borsh/BN.js)
+  // unsafe-inline retained for legacy wallet extension script injection
   // va.vercel-scripts.com + vitals.vercel-insights.com required by Vercel Analytics/SpeedInsights
   response.headers.set(
     'Content-Security-Policy',
@@ -34,7 +35,18 @@ export function proxy(request: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
-      "connect-src 'self' https://api.mainnet-beta.solana.com https://api.devnet.solana.com https://explorer.solana.com https://vitals.vercel-insights.com https://*.vercel-insights.com wss:",
+      // Solana RPCs (http + wss), Phantom, Solflare, Backpack, Vercel Analytics
+      "connect-src 'self'" +
+        " https://api.mainnet-beta.solana.com wss://api.mainnet-beta.solana.com" +
+        " https://api.devnet.solana.com wss://api.devnet.solana.com" +
+        " https://explorer.solana.com" +
+        " https://phantom.app https://api.phantom.app https://cdn.phantom.app" +
+        " https://solflare.com https://api.solflare.com" +
+        " https://api.backpack.exchange" +
+        " https://vitals.vercel-insights.com https://*.vercel-insights.com" +
+        " chrome-extension: moz-extension:",
+      // manifest-src: explicit to avoid default-src 'self' blocking the absolute URL
+      "manifest-src 'self' https://blockflip.vercel.app",
       "frame-ancestors 'none'",
     ].join('; ')
   );
