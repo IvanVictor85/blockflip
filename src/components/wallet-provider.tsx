@@ -3,7 +3,6 @@
 import { useEffect, useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -30,14 +29,13 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
     return clusterApiUrl('devnet');
   }, []);
 
-  // Only Phantom — reduces MessageEvent noise from Backpack/MetaMask fighting
-  // over window.solana during the Wallet Standard handshake.
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  // Empty list — Wallet Standard v1 auto-registers Phantom, Backpack, Solflare
+  // without explicit adapters. Manual adapters were conflicting with the Standard.
+  const wallets = useMemo(() => [], []);
 
-  // useEffect fires only on the client after hydration — guaranteed to appear
-  // in the browser DevTools console (unlike a render-phase log which runs on
-  // the server and is invisible to the browser).
+  // useEffect fires only on the client after hydration.
   useEffect(() => {
+    alert('BlockFlip Debug: Provider Loaded');
     console.log('[BlockFlip][SolanaWalletProvider] client mounted, endpoint:', endpoint);
   }, [endpoint]);
 
