@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
@@ -32,12 +32,6 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
   // Empty list — Wallet Standard v1 auto-registers Phantom, Backpack, Solflare
   // without explicit adapters. Manual adapters were conflicting with the Standard.
   const wallets = useMemo(() => [], []);
-
-  // useEffect fires only on the client after hydration.
-  useEffect(() => {
-    alert('BlockFlip Debug: Provider Loaded');
-    console.log('[BlockFlip][SolanaWalletProvider] client mounted, endpoint:', endpoint);
-  }, [endpoint]);
 
   return (
     <ConnectionProvider endpoint={endpoint}>
