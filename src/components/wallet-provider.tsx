@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
@@ -34,15 +34,12 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
   // over window.solana during the Wallet Standard handshake.
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
-  // All three providers are SSR-safe:
-  // - ConnectionProvider / WalletProvider: initialise React context with defaults,
-  //   never access browser APIs during the render phase.
-  // - WalletModalProvider: provides context + renders a portal, but the portal only
-  //   inserts DOM when visible=true, so SSR output is identical to client output.
-  // Keeping WalletModalProvider unconditional ensures useWalletModal() always gets
-  // the real setVisible — a conditional provider would give consumers a no-op during
-  // SSR/hydration, silently breaking the connect button click handler.
-  console.log('[BlockFlip][SolanaWalletProvider] mounted, endpoint:', endpoint);
+  // useEffect fires only on the client after hydration — guaranteed to appear
+  // in the browser DevTools console (unlike a render-phase log which runs on
+  // the server and is invisible to the browser).
+  useEffect(() => {
+    console.log('[BlockFlip][SolanaWalletProvider] client mounted, endpoint:', endpoint);
+  }, [endpoint]);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

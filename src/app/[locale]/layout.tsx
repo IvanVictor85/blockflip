@@ -128,6 +128,7 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+// Build Force Refresh: 17-04-2026-v2
 export default async function LocaleLayout({
   children,
   params,
