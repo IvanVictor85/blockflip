@@ -347,9 +347,18 @@ export const mockUnitEconomics: UnitEconomicsData = {
 
 export const formatCurrency = (value: number, currency: string = 'USDC'): string => {
   if (currency === 'USDC') {
-    return `$${value.toLocaleString('en-US')}`;
+    return `${value.toLocaleString('en-US')} USDC`;
   }
   return `R$ ${value.toLocaleString('pt-BR')}`;
+};
+
+// Fixed reference rate (Apr 2026). Replace with live API when ready.
+const USDC_TO_BRL = 5.70;
+export const formatBRL = (usdc: number): string => {
+  const brl = usdc * USDC_TO_BRL;
+  if (brl >= 1_000_000) return `≈ R$ ${(brl / 1_000_000).toFixed(1)}M`;
+  if (brl >= 1_000) return `≈ R$ ${(brl / 1_000).toFixed(0)}K`;
+  return `≈ R$ ${Math.round(brl).toLocaleString('pt-BR')}`;
 };
 
 export const formatPercentage = (value: number): string => {

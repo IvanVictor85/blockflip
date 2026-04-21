@@ -3,6 +3,18 @@
 import { ArrowRight, TrendingUp, Shield, Clock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { mockAssets } from '@/data/mock-assets';
+
+// Find the open asset closest to closing (least % remaining)
+const openAssets = mockAssets.filter(a => a.fundingRaised < a.fundingGoal);
+const urgentAsset = openAssets.sort((a, b) => {
+  const availA = (a.fundingGoal - a.fundingRaised) / a.fundingGoal;
+  const availB = (b.fundingGoal - b.fundingRaised) / b.fundingGoal;
+  return availA - availB;
+})[0];
+const availablePct = urgentAsset
+  ? Math.round((urgentAsset.fundingGoal - urgentAsset.fundingRaised) / urgentAsset.fundingGoal * 100)
+  : null;
 
 export function Hero() {
   const t = useTranslations('hero');
@@ -41,7 +53,9 @@ export function Hero() {
               className="bg-[#14F195] text-black hover:bg-[#0ED47F] font-semibold text-lg px-8 py-6 glow-solana"
               onClick={() => document.getElementById('marketplace')?.scrollIntoView({ behavior: 'smooth' })}
             >
-              {t('ctaPrimary')}
+              {availablePct !== null
+                ? `Ver oportunidade com ${availablePct}% disponível`
+                : t('ctaPrimary')}
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <Button

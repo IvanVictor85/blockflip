@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, X, Send, CheckCircle2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
 
 function XIcon({ className }: { className?: string }) {
   return (
@@ -20,8 +22,96 @@ function GitHubIcon({ className }: { className?: string }) {
   );
 }
 
+// Official Solana logo mark SVG (gradient parallelograms)
+function SolanaLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 397 312" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="sol-a" x1="360.879" y1="-3.3" x2="141.213" y2="314.458" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#00FFA3"/>
+          <stop offset="1" stopColor="#DC1FFF"/>
+        </linearGradient>
+        <linearGradient id="sol-b" x1="264.829" y1="-51.6" x2="45.163" y2="266.158" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#00FFA3"/>
+          <stop offset="1" stopColor="#DC1FFF"/>
+        </linearGradient>
+        <linearGradient id="sol-c" x1="312.548" y1="-27.5" x2="92.882" y2="290.258" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#00FFA3"/>
+          <stop offset="1" stopColor="#DC1FFF"/>
+        </linearGradient>
+      </defs>
+      <path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#sol-a)"/>
+      <path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#sol-b)"/>
+      <path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#sol-c)"/>
+    </svg>
+  );
+}
+
+interface ComingSoonModalProps {
+  title: string;
+  onClose: () => void;
+}
+
+function ComingSoonModal({ title, onClose }: ComingSoonModalProps) {
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setSubmitted(true);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-xl">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="text-center mb-6">
+          <div className="w-12 h-12 rounded-full bg-[#14F195]/10 border border-[#14F195]/20 flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">🚀</span>
+          </div>
+          <h3 className="text-xl font-bold mb-1">{title}</h3>
+          <p className="text-sm text-muted-foreground">Em breve disponível. Seja o primeiro a saber.</p>
+        </div>
+
+        {submitted ? (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <CheckCircle2 className="w-10 h-10 text-[#14F195]" />
+            <p className="text-sm font-medium">Email registrado! Avisaremos quando estiver disponível.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              required
+              className="w-full px-4 py-2.5 rounded-lg bg-secondary border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:border-[#14F195]/50 focus:ring-1 focus:ring-[#14F195]/30"
+            />
+            <Button type="submit" className="w-full bg-[#14F195] text-black hover:bg-[#0ED47F] font-semibold">
+              <Send className="w-4 h-4 mr-2" />
+              Notifique-me
+            </Button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Footer() {
   const t = useTranslations('footer');
+  const [modal, setModal] = useState<string | null>(null);
+
+  const openModal = (title: string) => setModal(title);
+  const closeModal = () => setModal(null);
 
   return (
     <footer className="py-12 border-t border-border">
@@ -41,10 +131,10 @@ export function Footer() {
 
           {/* Links */}
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">{t('docs')}</a>
-            <a href="#" className="hover:text-foreground transition-colors">{t('whitepaper')}</a>
-            <a href="#" className="hover:text-foreground transition-colors">{t('faq')}</a>
-            <a href="#" className="hover:text-foreground transition-colors">{t('contact')}</a>
+            <button onClick={() => openModal('Docs')} className="hover:text-foreground transition-colors">{t('docs')}</button>
+            <button onClick={() => openModal('Whitepaper')} className="hover:text-foreground transition-colors">{t('whitepaper')}</button>
+            <button onClick={() => openModal('FAQ')} className="hover:text-foreground transition-colors">{t('faq')}</button>
+            <button onClick={() => openModal('Contato')} className="hover:text-foreground transition-colors">{t('contact')}</button>
           </div>
 
           {/* Social */}
@@ -66,20 +156,13 @@ export function Footer() {
           <p>{t('copyright')}</p>
           <div className="flex items-center gap-2">
             <span>{t('poweredBy')}</span>
-            <svg className="h-4" viewBox="0 0 101 88" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M100.48 69.3817L83.8068 86.8015C83.4444 87.1799 83.0058 87.4816 82.5185 87.6878C82.0312 87.894 81.5055 88.0003 80.9743 88H0V69.3817C0.00236798 68.1569 0.485953 66.9823 1.34403 66.1217C2.20211 65.261 3.3619 64.7681 4.57102 64.7559H79.9845C80.5068 64.7557 81.024 64.6571 81.5064 64.4652C81.9889 64.2734 82.4272 63.992 82.7967 63.6374L95.9179 50.4106L100.48 55.0249V69.3817Z" fill="url(#paint0_linear_bf)"/>
-              <path d="M100.48 17.6142V32.5682L95.9179 37.1526L82.7967 23.9278C82.4272 23.5733 81.9889 23.2919 81.5064 23.1001C81.024 22.9083 80.5068 22.8097 79.9845 22.8095H4.57102C3.3619 22.7972 2.20211 22.3044 1.34403 21.4437C0.485953 20.5831 0.00236798 19.4085 0 18.1837V0H80.9743C81.5055 -0.000354102 82.0312 0.106038 82.5185 0.312241C83.0058 0.518443 83.4444 0.820099 83.8068 1.19846L100.48 18.6183V17.6142Z" fill="#14F195"/>
-              <defs>
-                <linearGradient id="paint0_linear_bf" x1="0" y1="71.7056" x2="100.48" y2="71.7056" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#9945FF"/>
-                  <stop offset="1" stopColor="#14F195"/>
-                </linearGradient>
-              </defs>
-            </svg>
+            <SolanaLogo className="h-5 w-auto" />
             <span className="font-semibold">Solana</span>
           </div>
         </div>
       </div>
+
+      {modal && <ComingSoonModal title={modal} onClose={closeModal} />}
     </footer>
   );
 }
