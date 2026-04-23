@@ -43,3 +43,14 @@ next-env.d.ts
 
 # AI tool internal state (Cursor, Claude Code, etc.)
 .ai/
+
+# ----------------------------------------------------------------------
+# Solana / Anchor & Web3 Security
+# ----------------------------------------------------------------------
+anchor/target/
+anchor/.anchor/
+anchor/node_modules/
+test-ledger/
+*.keypair
+*keypair.json
+id.json

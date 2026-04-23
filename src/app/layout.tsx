@@ -42,7 +42,7 @@ export default function RootLayout({
         {/* JSON-LD is static and locale-independent — lives here to avoid hydration mismatch */}
         <JsonLd />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body suppressHydrationWarning className="min-h-full flex flex-col bg-background text-foreground">
         {children}
       </body>
     </html>

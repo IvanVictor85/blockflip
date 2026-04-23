@@ -1,11 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { LanguageSwitcher } from '@/components/language-switcher';
+
+// Dynamic import with ssr:false — prevents hydration mismatch caused by
+// browser wallet extensions injecting state before React hydrates.
+const WalletMultiButton = dynamic(
+  () => import('@solana/wallet-adapter-react-ui').then((m) => m.WalletMultiButton),
+  { ssr: false }
+);
 
 export function Navbar() {
   const t = useTranslations('nav');

@@ -1,0 +1,39 @@
+[workspace]
+members = ["programs/blockflip"]
+resolver = "2"
+
+# ── Toolchain Compatibility Patch ─────────────────────────────────────────────
+# Solana 3.0.9 platform-tools embeds rustc 1.84.1 (Cargo 1.84.0).
+# Several modern crates (blake3 1.8.4 + its transitive deps) use edition="2024"
+# which is not stable in Cargo 1.84.0. We patch them locally by changing the
+# manifest edition to "2021" — the source code is identical.
+[patch.crates-io]
+constant_time_eq = { path = "patches/constant_time_eq" }
+blake3          = { path = "patches/blake3-1.8.4"       }
+cpufeatures     = { path = "patches/cpufeatures-0.3.0"  }
+cmov            = { path = "patches/cmov-0.5.3"         }
+ctutils         = { path = "patches/ctutils-0.4.2"      }
+digest          = { path = "patches/digest-0.11.2"      }
+block-buffer    = { path = "patches/block-buffer-0.12.0"}
+crypto-common   = { path = "patches/crypto-common-0.2.1"}
+hybrid-array    = { path = "patches/hybrid-array-0.4.10"}
+hashbrown       = { path = "patches/hashbrown-0.17.0"   }
+indexmap        = { path = "patches/indexmap-2.14.0"    }
+toml_datetime   = { path = "patches/toml_datetime-1.1.1+spec-1.1.0" }
+toml_edit       = { path = "patches/toml_edit-0.25.11+spec-1.1.0"   }
+toml_parser          = { path = "patches/toml_parser-1.1.2+spec-1.1.0"   }
+wit-bindgen          = { path = "patches/wit-bindgen-0.57.1"              }
+unicode-segmentation = { path = "patches/unicode-segmentation-1.13.2"     }
+wasip2               = { path = "patches/wasip2-1.0.3+wasi-0.2.9"         }
+anchor-lang-idl      = { path = "patches/anchor-lang-idl-0.1.2"            }
+anchor-syn           = { path = "patches/anchor-syn-0.30.1"                 }
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1

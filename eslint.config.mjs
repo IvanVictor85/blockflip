@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Anchor workspace has its own tsconfig/eslint — exclude from Next.js build checks
+    "anchor/**",
   ]),
 ]);
 

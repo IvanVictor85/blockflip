@@ -1,0 +1,13 @@
+import { PublicKey } from '@solana/web3.js';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const BlockflipIDL = require('./blockflip.json');
+
+export const PROGRAM_ID = new PublicKey('8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T');
+
+export { BlockflipIDL };
+
+// Seed constants — mirror the on-chain constants in lib.rs
+export const PROTOCOL_SEED   = Buffer.from('blockflip_v1');
+export const SPECIALIST_SEED = Buffer.from('specialist');
+export const POOL_SEED       = Buffer.from('pool');
+export const POSITION_SEED   = Buffer.from('position');
