@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useInvestment } from '@/hooks/use-investment';
+import { useInvestment, type BlockchainInvestParams } from '@/hooks/use-investment';
 import { getExplorerTxUrl } from '@/lib/solana';
 import { formatCurrency } from '@/data/mock-assets';
 import type { Asset } from '@/types';
@@ -161,8 +161,15 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
   const nameKey = ASSET_NAME_KEY[asset.id];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const displayTitle = nameKey ? (tNames as any)(nameKey) as string : asset.title;
+
+  // Wire real Anchor invest for on-chain pools; fall back to mock for demo assets
+  const blockchainParams: BlockchainInvestParams | undefined =
+    asset.poolId !== undefined && asset.poolVault && asset.investorAta
+      ? { poolId: asset.poolId, poolVault: asset.poolVault, investorTokenAccount: asset.investorAta }
+      : undefined;
+
   const { state, walletAddress, onAmountChange, submit, reset, isProcessing, canSubmit } =
-    useInvestment(asset.id, asset.minInvestment);
+    useInvestment(asset.id, asset.minInvestment, blockchainParams);
 
   const isConnected = Boolean(walletAddress);
   const fundingRemaining = asset.fundingGoal - asset.fundingRaised;
@@ -199,12 +206,17 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
 
         {/* ── Header ── */}
         <DialogHeader>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <Badge className="bg-[#14F195]/10 text-[#14F195] border border-[#14F195]/30 text-xs">
               <ShieldCheck className="w-3 h-3 mr-1" />
               {t('speVerified')}
             </Badge>
             <Badge className="bg-secondary border-border text-xs">{asset.tokenSymbol}</Badge>
+            {blockchainParams && (
+              <Badge className="bg-blue-500/10 text-blue-500 border border-blue-500/20 text-xs">
+                On-chain · Pool #{asset.poolId}
+              </Badge>
+            )}
           </div>
           <DialogTitle className="text-xl">{displayTitle}</DialogTitle>
           <DialogDescription className="text-xs">{asset.location}</DialogDescription>

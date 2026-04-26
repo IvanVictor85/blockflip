@@ -4,6 +4,7 @@ import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { SolanaWalletProvider } from "@/components/wallet-provider";
+import { Navbar } from "@/components/ui/navbar";
 // Analytics/SpeedInsights temporarily disabled — ERR_BLOCKED_BY_CLIENT noise
 // was polluting the console during wallet connection debugging.
 // TODO: re-enable after wallet flow is confirmed working.
@@ -148,9 +149,10 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <SolanaWalletProvider>
+        <Navbar />
         {children}
         <Toaster
-          theme="dark"
+          theme="system"
           position="bottom-right"
           toastOptions={{
             style: {

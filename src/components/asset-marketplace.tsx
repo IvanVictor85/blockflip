@@ -10,17 +10,105 @@ import { PropertyDocuments } from '@/components/property-documents';
 import { mockAssets } from '@/data/mock-assets';
 import { Asset, AssetStatus } from '@/types';
 
+// ─── LocalStorage pool shape ──────────────────────────────────────────────────
+
+interface StoredPool {
+  poolId: number;
+  poolStatePda: string;
+  name: string;
+  location: string;
+  description: string;
+  imageUrl: string;
+  cycleDays: number;
+  fundingGoal: number;
+  targetSalePrice: number;
+  roi: { conservador: number; base: number; otimista: number };
+  operator: string;
+  createdAt: string;
+  sig?: string;
+  vault?: string | null;
+  acceptedMint?: string | null;
+  operatorAta?: string | null;
+}
+
+const DEFAULT_PROPERTY_IMG =
+  'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=800&q=80';
+
+function storedPoolToAsset(p: StoredPool): Asset {
+  const daysSinceCreation = Math.floor(
+    (Date.now() - new Date(p.createdAt).getTime()) / 86_400_000
+  );
+
+  return {
+    id: `pool-${p.poolId}`,
+    title: p.name,
+    location: p.location,
+    imageUrl: p.imageUrl || DEFAULT_PROPERTY_IMG,
+    // Pools in Funding state → arremate (first stage: acquired, raising capital)
+    status: 'arremate' as AssetStatus,
+    acquisitionPrice: Math.round(p.fundingGoal * 0.65),
+    targetSalePrice: p.targetSalePrice || Math.round(p.fundingGoal * 1.3),
+    estimatedROI: p.roi.base,
+    cycleDays: p.cycleDays,
+    currentDay: daysSinceCreation,
+    fundingGoal: p.fundingGoal,
+    fundingRaised: 0, // updated after invest calls; 0 at creation
+    fundingCurrency: 'USDC',
+    milestones: [],
+    tokenSymbol: `BFLP-${String(p.poolId).padStart(3, '0')}`,
+    totalTokens: p.fundingGoal,
+    minInvestment: 100,
+    smartContractAddress: p.poolStatePda,
+    speAddress: p.poolStatePda,
+    verificationStatus: 'pending',
+    documents: [],
+    // Real on-chain fields for invest wiring
+    poolId: p.poolId,
+    poolVault: p.vault ?? undefined,
+    acceptedMint: p.acceptedMint ?? undefined,
+    investorAta: p.operatorAta ?? undefined, // same wallet in demo
+  };
+}
+
+// ─── Read localStorage → Asset[] (pure function, called once on mount) ────────
+
+function readRealPools(): Asset[] {
+  try {
+    const stored: StoredPool[] = JSON.parse(
+      localStorage.getItem('blockflip_pools') ?? '[]'
+    );
+    return stored.map(storedPoolToAsset);
+  } catch {
+    return [];
+  }
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type FilterStatus = AssetStatus | 'all';
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function AssetMarketplace() {
   const t = useTranslations('marketplace');
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [activeTab, setActiveTab] = useState<'proof' | 'documents'>('proof');
+  // Lazy initializer runs once on the client (window is undefined on server → []).
+  // No useEffect needed — avoids the react-hooks/set-state-in-effect lint rule
+  // and prevents the useSyncExternalStore infinite-loop.
+  const [realAssets] = useState<Asset[]>(() =>
+    typeof window === 'undefined' ? [] : readRealPools()
+  );
 
-  const filteredAssets = filter === 'all'
-    ? mockAssets
-    : mockAssets.filter(asset => asset.status === filter);
+  // Real pools first, then mocks — deduplicate by id
+  const allAssets: Asset[] = [
+    ...realAssets,
+    ...mockAssets.filter((m) => !realAssets.some((r) => r.id === m.id)),
+  ];
+
+  const filteredAssets =
+    filter === 'all' ? allAssets : allAssets.filter((a) => a.status === filter);
 
   const filterOptions: { value: FilterStatus; label: string }[] = [
     { value: 'all', label: t('filterAll') },
@@ -41,6 +129,11 @@ export function AssetMarketplace() {
         <div className="text-center mb-12">
           <Badge className="bg-[#14F195]/10 text-[#14F195] border border-[#14F195]/30 mb-4">
             {t('badge')}
+            {realAssets.length > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 rounded-full bg-[#14F195] text-black text-[10px] font-bold">
+                {realAssets.length} on-chain
+              </span>
+            )}
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">{t('title')}</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">{t('description')}</p>
@@ -65,22 +158,15 @@ export function AssetMarketplace() {
               </Button>
             ))}
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {t('assetCount', { count: filteredAssets.length })}
-            </span>
-          </div>
+          <span className="text-sm text-muted-foreground">
+            {t('assetCount', { count: filteredAssets.length })}
+          </span>
         </div>
 
-        {/* Asset Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {/* Asset Grid — suppressHydrationWarning: server has 0 real pools, client reads localStorage */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" suppressHydrationWarning>
           {filteredAssets.map((asset) => (
-            <AssetCard
-              key={asset.id}
-              asset={asset}
-              onSelect={setSelectedAsset}
-            />
+            <AssetCard key={asset.id} asset={asset} onSelect={setSelectedAsset} />
           ))}
         </div>
 
@@ -104,10 +190,16 @@ export function AssetMarketplace() {
                 </svg>
               </button>
 
-              {/* Modal Header with Tabs */}
               <div className="border-b border-border p-6 pb-0">
-                <h3 className="text-xl font-semibold mb-4">{selectedAsset.title}</h3>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-semibold">{selectedAsset.title}</h3>
+                  {selectedAsset.poolId !== undefined && (
+                    <Badge className="bg-[#14F195]/10 text-[#14F195] border border-[#14F195]/30 text-xs">
+                      On-chain · Pool #{selectedAsset.poolId}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-1 mt-4">
                   <button
                     onClick={() => setActiveTab('proof')}
                     className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
@@ -131,7 +223,6 @@ export function AssetMarketplace() {
                 </div>
               </div>
 
-              {/* Modal Content */}
               <div className="p-6">
                 {activeTab === 'proof' && <ProofOfBuild asset={selectedAsset} />}
                 {activeTab === 'documents' && (

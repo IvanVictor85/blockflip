@@ -66,10 +66,13 @@ export function AssetCard({ asset, onSelect }: AssetCardProps) {
     <Card className={`group overflow-hidden bg-card border border-border border-l-4 ${status.borderColor} ${isFundingClosed ? 'border-l-gray-600' : ''} hover:border-[#14F195]/30 transition-all duration-300 hover:shadow-lg hover:shadow-[#14F195]/5`}>
 
       {/* Image area */}
-      <div className="relative h-44 bg-gradient-to-br from-secondary to-muted overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-          <span className="text-sm">Imagem do Imóvel</span>
-        </div>
+      <div className="relative h-44 overflow-hidden bg-muted">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=800&q=80"
+          alt={displayTitle}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
 
         {/* Status badge — bottom-left overlay */}
         <div className="absolute bottom-3 left-3">
@@ -134,7 +137,7 @@ export function AssetCard({ asset, onSelect }: AssetCardProps) {
           <div className="flex items-center justify-between text-sm mb-2">
             <span className="text-muted-foreground">{t('funding')}</span>
           </div>
-          <Progress value={fundingProgress} className="h-3 bg-secondary" />
+          <Progress value={fundingProgress} className="w-full" trackClassName="h-2 bg-secondary" />
           <div className="flex items-center justify-between mt-1">
             <span className="text-xs font-semibold">{fundingProgress.toFixed(0)}% {t('funded')}</span>
             <span className="text-xs font-mono text-[#14F195]">{formatCurrency(asset.fundingRaised)}</span>

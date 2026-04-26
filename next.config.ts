@@ -46,6 +46,11 @@ const nextConfig: NextConfig = {
         hostname: "**.ipfs.io",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
     ],
   },
 

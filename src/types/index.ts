@@ -43,6 +43,11 @@ export interface Asset {
   speAddress: string; // Sociedade de Propósito Específico address
   verificationStatus: 'verified' | 'pending' | 'unverified';
   documents: PropertyDocument[];
+  // On-chain investment fields (present only for real pools from localStorage)
+  poolId?: number;
+  poolVault?: string;
+  acceptedMint?: string;
+  investorAta?: string;
 }
 
 // ─── Investment Flow State Machine ───────────────────────────────────────────

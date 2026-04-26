@@ -4,12 +4,12 @@ import { Gavel, Search, FileText, HardHat, Sparkles, TrendingUp } from 'lucide-r
 import { Badge } from '@/components/ui/badge';
 
 const CYCLE_STAGES = [
-  { icon: Gavel,      label: 'Arremate',   color: 'text-blue-400',    bg: 'bg-blue-400/10 border-blue-400/30' },
-  { icon: Search,     label: 'Vistoria',   color: 'text-violet-400',  bg: 'bg-violet-400/10 border-violet-400/30' },
-  { icon: FileText,   label: 'Projeto',    color: 'text-amber-400',   bg: 'bg-amber-400/10 border-amber-400/30' },
-  { icon: HardHat,    label: 'Reforma',    color: 'text-orange-400',  bg: 'bg-orange-400/10 border-orange-400/30' },
-  { icon: Sparkles,   label: 'Acabamento', color: 'text-pink-400',    bg: 'bg-pink-400/10 border-pink-400/30' },
-  { icon: TrendingUp, label: 'Venda',      color: 'text-[#14F195]',   bg: 'bg-[#14F195]/10 border-[#14F195]/30' },
+  { icon: Gavel,      label: 'Arremate',   color: 'text-blue-700 dark:text-blue-400',    bg: 'bg-blue-100 border-blue-300 dark:bg-blue-400/10 dark:border-blue-400/30' },
+  { icon: Search,     label: 'Vistoria',   color: 'text-violet-700 dark:text-violet-400',  bg: 'bg-violet-100 border-violet-300 dark:bg-violet-400/10 dark:border-violet-400/30' },
+  { icon: FileText,   label: 'Projeto',    color: 'text-amber-700 dark:text-amber-400',   bg: 'bg-amber-100 border-amber-300 dark:bg-amber-400/10 dark:border-amber-400/30' },
+  { icon: HardHat,    label: 'Reforma',    color: 'text-orange-700 dark:text-orange-400',  bg: 'bg-orange-100 border-orange-300 dark:bg-orange-400/10 dark:border-orange-400/30' },
+  { icon: Sparkles,   label: 'Acabamento', color: 'text-pink-700 dark:text-pink-400',    bg: 'bg-pink-100 border-pink-300 dark:bg-pink-400/10 dark:border-pink-400/30' },
+  { icon: TrendingUp, label: 'Venda',      color: 'text-emerald-700 dark:text-[#14F195]',   bg: 'bg-emerald-100 border-emerald-300 dark:bg-[#14F195]/10 dark:border-[#14F195]/30' },
 ];
 
 export function BuildCycle() {

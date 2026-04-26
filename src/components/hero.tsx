@@ -1,37 +1,29 @@
 'use client';
 
 import { ArrowRight, TrendingUp, Shield, Clock } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { mockAssets } from '@/data/mock-assets';
-
-// Find the open asset closest to closing (least % remaining)
-const openAssets = mockAssets.filter(a => a.fundingRaised < a.fundingGoal);
-const urgentAsset = openAssets.sort((a, b) => {
-  const availA = (a.fundingGoal - a.fundingRaised) / a.fundingGoal;
-  const availB = (b.fundingGoal - b.fundingRaised) / b.fundingGoal;
-  return availA - availB;
-})[0];
-const availablePct = urgentAsset
-  ? Math.round((urgentAsset.fundingGoal - urgentAsset.fundingRaised) / urgentAsset.fundingGoal * 100)
-  : null;
+import { defaultLocale } from '@/i18n/config';
 
 export function Hero() {
   const t = useTranslations('hero');
+  const locale = useLocale();
+  const specialistHref = locale === defaultLocale ? '/specialist' : `/${locale}/specialist`;
 
   return (
     <section className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
-      {/* Background gradient effects */}
+      {/* Subtle background — single green glow, no purple */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#14F195]/5 via-transparent to-transparent" />
-      <div className="absolute top-1/4 -left-1/4 w-1/2 h-1/2 bg-[#14F195]/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-[#9945FF]/10 rounded-full blur-[120px]" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-2/3 h-1/2 bg-[#14F195]/8 rounded-full blur-[140px] pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center max-w-4xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#14F195]/10 border border-[#14F195]/20 mb-8">
-            <div className="w-2 h-2 rounded-full bg-[#14F195] animate-pulse" />
-            <span className="text-sm text-[#14F195] font-medium">{t('badge')}</span>
+
+          {/* Badge — credibility, not tech-stack marketing */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#14F195]/10 border border-[#14F195]/20 mb-8">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#14F195] animate-pulse" />
+            <span className="text-xs text-[#14F195] font-medium tracking-wide">{t('badge')}</span>
           </div>
 
           {/* Main Headline */}
@@ -41,31 +33,26 @@ export function Hero() {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             {t('subheadline')}
-            <span className="text-foreground font-medium"> {t('roiHighlight')}</span>
           </p>
 
-          {/* CTA Buttons */}
+          {/* CTAs — max 2, clear hierarchy */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Button
               size="lg"
-              className="bg-[#14F195] text-black hover:bg-[#0ED47F] font-semibold text-lg px-8 py-6 glow-solana"
+              className="bg-[#14F195] text-black hover:bg-[#0ED47F] font-semibold text-base px-8 py-6 glow-solana"
               onClick={() => document.getElementById('marketplace')?.scrollIntoView({ behavior: 'smooth' })}
             >
-              {availablePct !== null
-                ? `Ver oportunidade com ${availablePct}% disponível`
-                : t('ctaPrimary')}
+              {t('ctaPrimary')}
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-[#14F195]/30 hover:bg-[#14F195]/10 text-lg px-8 py-6"
-              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+            <Link
+              href={specialistHref}
+              className="inline-flex items-center justify-center rounded-lg border border-border bg-background hover:border-[#14F195]/40 hover:bg-[#14F195]/5 text-base font-medium px-8 py-6 transition-colors"
             >
               {t('ctaSecondary')}
-            </Button>
+            </Link>
           </div>
 
           {/* Stats */}
@@ -86,6 +73,7 @@ export function Hero() {
               <span className="text-sm text-muted-foreground">{t('statTransparency')}</span>
             </div>
           </div>
+
         </div>
       </div>
     </section>

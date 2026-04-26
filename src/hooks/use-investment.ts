@@ -12,6 +12,7 @@ import {
   handleInvest,
   getExplorerTxUrl,
 } from '@/lib/solana';
+import { useBlockFlip } from '@/hooks/useBlockFlip';
 import type {
   InvestmentState,
   InvestmentStep,
@@ -19,6 +20,14 @@ import type {
   InvestmentErrorType,
   InvestmentFees,
 } from '@/types';
+
+// ─── Real-pool blockchain params ──────────────────────────────────────────────
+
+export interface BlockchainInvestParams {
+  poolId: number;
+  poolVault: string;
+  investorTokenAccount: string;
+}
 
 // ─── Estado inicial ───────────────────────────────────────────────────────────
 
@@ -32,20 +41,25 @@ const INITIAL_STATE: InvestmentState = {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useInvestment(assetId: string, minInvestment: number) {
+export function useInvestment(
+  assetId: string,
+  minInvestment: number,
+  blockchainParams?: BlockchainInvestParams
+) {
   const t = useTranslations('investment');
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toString() ?? null;
 
+  // Real Anchor invest (only used when blockchainParams present)
+  const { invest: anchorInvest } = useBlockFlip();
+
   const [state, setState] = useState<InvestmentState>(INITIAL_STATE);
 
-  // Error messages come from i18n
   const errorMessage = useCallback(
     (type: InvestmentErrorType): string => t(`errors.${type}`),
     [t]
   );
 
-  // Transition helper — garante imutabilidade
   const transition = useCallback((step: InvestmentStep, patch: Partial<InvestmentState> = {}) => {
     setState((prev) => ({ ...prev, step, error: null, ...patch }));
   }, []);
@@ -60,13 +74,12 @@ export function useInvestment(assetId: string, minInvestment: number) {
     console.error(`[BlockFlip][useInvestment] Error(${type}):`, technical ?? error.message);
   }, [errorMessage]);
 
-  // ─── Atualização de valor em tempo real ──────────────────────────────────
+  // ─── Amount change ────────────────────────────────────────────────────────
 
   const onAmountChange = useCallback(
     (raw: string) => {
       const amount = parseFloat(raw) || 0;
       transition('amount_entry', { amountUsdc: amount, fees: null });
-
       if (amount > 0) {
         const fees: InvestmentFees = calculateInvestmentFees(amount);
         setState((prev) => ({ ...prev, fees }));
@@ -75,12 +88,12 @@ export function useInvestment(assetId: string, minInvestment: number) {
     [transition]
   );
 
-  // ─── Fluxo principal de investimento ─────────────────────────────────────
+  // ─── Submit ───────────────────────────────────────────────────────────────
 
   const submit = useCallback(async () => {
     const { amountUsdc } = state;
 
-    // ── STEP: validation ──────────────────────────────────────────────────
+    // ── validation ────────────────────────────────────────────────────────
     transition('validation');
 
     const parsed = investmentSchema.safeParse({
@@ -96,7 +109,7 @@ export function useInvestment(assetId: string, minInvestment: number) {
       return;
     }
 
-    // ── STEP: wallet_check ────────────────────────────────────────────────
+    // ── wallet check ──────────────────────────────────────────────────────
     transition('wallet_check');
 
     if (!walletAddress) {
@@ -105,7 +118,55 @@ export function useInvestment(assetId: string, minInvestment: number) {
       return;
     }
 
-    // Verificar saldo USDC
+    // ── Real on-chain invest ──────────────────────────────────────────────
+    if (blockchainParams) {
+      if (!blockchainParams.poolVault || !blockchainParams.investorTokenAccount) {
+        setError('rpc_error', 'Missing vault or ATA address for this pool');
+        toast.error('Pool incompleta', {
+          description: 'Vault ou ATA não encontrados. Recrie a infraestrutura de tokens.',
+        });
+        return;
+      }
+
+      transition('awaiting_signature');
+      const toastId = toast.loading(t('stepAwaitingSignature'), {
+        description: 'Phantom · Backpack · Solflare',
+      });
+
+      try {
+        transition('confirming_on_chain');
+        toast.loading(t('stepConfirming'), { id: toastId, description: '~400ms' });
+
+        const sig = await anchorInvest(
+          blockchainParams.poolId,
+          amountUsdc,
+          blockchainParams.investorTokenAccount,
+          blockchainParams.poolVault,
+        );
+
+        transition('success', { txSignature: sig });
+        toast.dismiss(toastId);
+        toast.success(t('successTitle'), {
+          description: `Aporte de ${amountUsdc.toLocaleString('pt-BR')} tokens confirmado on-chain.`,
+          action: {
+            label: t('viewOnExplorer'),
+            onClick: () => window.open(getExplorerTxUrl(sig), '_blank'),
+          },
+          duration: 8_000,
+        });
+      } catch (err: unknown) {
+        toast.dismiss(toastId);
+        const msg = (err as Error)?.message ?? '';
+        const isRejected = msg.toLowerCase().includes('reject') || msg.toLowerCase().includes('cancel');
+        const errType: InvestmentErrorType = isRejected ? 'user_rejected' : 'rpc_error';
+        setError(errType, msg);
+        toast.error(t('errorTitle'), { description: msg.slice(0, 120) });
+      }
+      return;
+    }
+
+    // ── Mock invest (legacy mock assets) ──────────────────────────────────
+
     let balanceCheck: { sufficient: boolean; balance: number };
     try {
       balanceCheck = await checkWalletBalance(walletAddress, amountUsdc);
@@ -116,15 +177,11 @@ export function useInvestment(assetId: string, minInvestment: number) {
     }
 
     if (!balanceCheck.sufficient) {
-      setError(
-        'insufficient_balance',
-        `Balance: $${balanceCheck.balance} USDC | Required: $${amountUsdc} USDC`
-      );
+      setError('insufficient_balance', `Balance: $${balanceCheck.balance} USDC | Required: $${amountUsdc} USDC`);
       toast.error(t('errorTitle'), { description: errorMessage('insufficient_balance') });
       return;
     }
 
-    // Verificar cap de captação
     let capCheck: { available: boolean; remainingCapacity: number };
     try {
       capCheck = await checkFundingCap(assetId, amountUsdc);
@@ -140,21 +197,16 @@ export function useInvestment(assetId: string, minInvestment: number) {
       return;
     }
 
-    // ── STEP: awaiting_signature ──────────────────────────────────────────
     transition('awaiting_signature');
     const toastId = toast.loading(t('stepAwaitingSignature'), {
       description: 'Phantom · Backpack · Solflare',
     });
 
-    // ── STEP: confirming_on_chain ─────────────────────────────────────────
     let result;
     try {
       result = await handleInvest({ assetId, walletAddress, amountUsdc });
       transition('confirming_on_chain');
-      toast.loading(t('stepConfirming'), {
-        id: toastId,
-        description: '~400ms',
-      });
+      toast.loading(t('stepConfirming'), { id: toastId, description: '~400ms' });
     } catch (err: unknown) {
       const typed = err as { type?: InvestmentErrorType; message?: string };
       const errType: InvestmentErrorType = typed?.type ?? 'unknown';
@@ -164,48 +216,33 @@ export function useInvestment(assetId: string, minInvestment: number) {
       return;
     }
 
-    // ── STEP: success ─────────────────────────────────────────────────────
     transition('success', { txSignature: result.txSignature });
     toast.dismiss(toastId);
     toast.success(t('successTitle'), {
-      description: t('successMessage', {
-        amount: amountUsdc,
-        symbol: assetId.toUpperCase(),
-      }),
+      description: t('successMessage', { amount: amountUsdc, symbol: assetId.toUpperCase() }),
       action: {
         label: t('viewOnExplorer'),
         onClick: () => window.open(getExplorerTxUrl(result.txSignature), '_blank'),
       },
       duration: 8_000,
     });
-  }, [state, assetId, walletAddress, transition, setError, errorMessage, t]);
+  }, [
+    state, assetId, walletAddress, blockchainParams,
+    transition, setError, errorMessage, t,
+    anchorInvest,
+  ]);
 
-  // ─── Reset para reabertura do modal ──────────────────────────────────────
+  // ─── Reset ────────────────────────────────────────────────────────────────
 
-  const reset = useCallback(() => {
-    setState(INITIAL_STATE);
-  }, []);
+  const reset = useCallback(() => setState(INITIAL_STATE), []);
 
-  // ─── Derived state helpers ────────────────────────────────────────────────
+  // ─── Derived ──────────────────────────────────────────────────────────────
 
   const isProcessing = [
-    'validation',
-    'wallet_check',
-    'awaiting_signature',
-    'confirming_on_chain',
+    'validation', 'wallet_check', 'awaiting_signature', 'confirming_on_chain',
   ].includes(state.step);
 
-  const canSubmit =
-    state.step === 'amount_entry' &&
-    state.amountUsdc >= minInvestment;
+  const canSubmit = state.step === 'amount_entry' && state.amountUsdc >= minInvestment;
 
-  return {
-    state,
-    walletAddress,
-    onAmountChange,
-    submit,
-    reset,
-    isProcessing,
-    canSubmit,
-  };
+  return { state, walletAddress, onAmountChange, submit, reset, isProcessing, canSubmit };
 }

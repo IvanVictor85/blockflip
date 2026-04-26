@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { JsonLd } from "@/components/json-ld";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,12 +23,12 @@ export const metadata: Metadata = {
 // Viewport must stay in root layout for correct mobile rendering
 export const viewport: Viewport = {
   themeColor: "#14F195",
-  colorScheme: "dark",
+  colorScheme: "light dark",
   width: "device-width",
   initialScale: 1,
 };
 
-// Minimal root layout — all locale-specific content lives in [locale]/layout.tsx
+// Minimal root layout — ThemeProvider lives here so it wraps the entire app.
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,14 +37,21 @@ export default function RootLayout({
   return (
     <html
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         {/* JSON-LD is static and locale-independent — lives here to avoid hydration mismatch */}
         <JsonLd />
       </head>
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
