@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useWallet } from '@solana/wallet-adapter-react';
 import {
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
 import { isAllowedImageUrl } from '@/lib/security';
+import { getPoolsAction } from '@/actions/pool';
 
 // ─── Stored Investment (from localStorage) ───────────────────────────────────
 
@@ -45,7 +46,7 @@ function readAllInvestments(): StoredInvestment[] {
   catch { return []; }
 }
 
-// ─── Operator Pool (from localStorage) ───────────────────────────────────────
+// ─── Operator Pool (raw localStorage shape) ───────────────────────────────────
 
 interface OperatorPool {
   poolId: number;
@@ -63,11 +64,45 @@ interface OperatorPool {
   sig?: string;
 }
 
-// ─── Read localStorage once on mount (pure fn, called inside useCallback) ─────
+// ─── Unified display type (DB + localStorage merged) ─────────────────────────
+
+interface DisplayPool {
+  key: string;
+  poolId: number | null;
+  poolStatePda: string;
+  name: string;
+  location: string;
+  imageUrl: string;
+  cycleDays: number | null;
+  fundingGoal: number;
+  roi: { conservador: number; base: number; otimista: number };
+  operator: string;
+  createdAt: string;
+  sig?: string;
+}
+
+// ─── Read localStorage once on mount ─────────────────────────────────────────
 
 function readAllPools(): OperatorPool[] {
   try { return JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]'); }
   catch { return []; }
+}
+
+function localToDisplay(p: OperatorPool): DisplayPool {
+  return {
+    key: p.poolStatePda,
+    poolId: p.poolId,
+    poolStatePda: p.poolStatePda,
+    name: p.name,
+    location: p.location,
+    imageUrl: p.imageUrl,
+    cycleDays: p.cycleDays,
+    fundingGoal: p.fundingGoal,
+    roi: p.roi,
+    operator: p.operator,
+    createdAt: p.createdAt,
+    sig: p.sig,
+  };
 }
 
 const WalletMultiButton = dynamic(
@@ -318,7 +353,7 @@ const poolStatusConfig = {
   completed: { labelKey: 'statusCompleted', color: 'bg-[#14F195]/10 text-emerald-700 dark:text-[#14F195] border-[#14F195]/20' },
 } as const;
 
-function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
+function OperatorPoolCard({ pool }: { pool: DisplayPool }) {
   const t = useTranslations('dashboard');
   const [imgError, setImgError] = useState(false);
   // Pools saved after depositSkinInGame are in Funding state; before = Pending
@@ -347,7 +382,7 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
           </div>
           <div className="absolute top-3 left-3">
             <span className="inline-flex items-center rounded-md bg-black/60 backdrop-blur-sm px-2 py-0.5 text-xs font-bold text-white">
-              Pool #{pool.poolId}
+              {pool.poolId != null ? `Pool #${pool.poolId}` : `${pool.poolStatePda.slice(0, 6)}…`}
             </span>
           </div>
         </div>
@@ -357,7 +392,7 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
           <div className="flex items-start justify-between gap-2">
             <div>
               <h3 className="font-semibold text-base leading-tight">{pool.name}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{pool.location}</p>
+              {pool.location && <p className="text-xs text-muted-foreground mt-0.5">{pool.location}</p>}
             </div>
             <span className="text-xs text-muted-foreground shrink-0">{createdDate}</span>
           </div>
@@ -386,7 +421,7 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{t('cycle')}</p>
-              <p className="font-semibold mt-0.5">{pool.cycleDays} {t('cycleUnit')}</p>
+              <p className="font-semibold mt-0.5">{pool.cycleDays != null ? `${pool.cycleDays} ${t('cycleUnit')}` : '—'}</p>
             </div>
           </div>
 
@@ -417,13 +452,58 @@ export default function DashboardPage() {
   const { publicKey } = useWallet();
   const t = useTranslations('dashboard');
 
-  // useMemo: recomputes only when publicKey changes — same pattern as operatorPools.
-  const operatorPools = useMemo<OperatorPool[]>(() => {
+  type DbPool = Extract<Awaited<ReturnType<typeof getPoolsAction>>, { success: true }>['data'][number];
+  // DB pools fetched asynchronously
+  const [dbPools, setDbPools] = useState<DbPool[]>([]);
+
+  useEffect(() => {
+    if (!publicKey) return;
+    const wallet = publicKey.toBase58();
+    getPoolsAction().then((res) => {
+      if (!res.success) return;
+      setDbPools(res.data.filter((p) => p.specialist.walletAddress === wallet));
+    });
+  }, [publicKey]);
+
+  // Merge DB + localStorage: DB is canonical, localStorage supplements missing fields.
+  // Dedup by poolPda so pools saved to both sources appear only once.
+  const operatorPools = useMemo<DisplayPool[]>(() => {
     if (!publicKey || typeof window === 'undefined') return [];
     try {
-      return readAllPools().filter((p) => p.operator === publicKey.toBase58());
+      const wallet = publicKey.toBase58();
+      const localPools = readAllPools()
+        .filter((p) => p.operator === wallet)
+        .map(localToDisplay);
+
+      const dbMapped: DisplayPool[] = dbPools.map((p) => {
+        const local = localPools.find((lp) => lp.poolStatePda === p.poolPda);
+        return {
+          key: p.poolPda,
+          poolId: local?.poolId ?? null,
+          poolStatePda: p.poolPda,
+          name: p.name,
+          location: local?.location ?? '',
+          imageUrl: p.imageUrl ?? local?.imageUrl ?? '',
+          cycleDays: local?.cycleDays ?? null,
+          fundingGoal: p.targetCapital,
+          roi: {
+            conservador: p.roiConservative,
+            base: p.roiBase,
+            otimista: p.roiOptimistic,
+          },
+          operator: p.specialist.walletAddress ?? wallet,
+          createdAt: p.createdAt,
+          sig: local?.sig,
+        };
+      });
+
+      // Include localStorage-only pools (created before DB migration)
+      const dbPdas = new Set(dbMapped.map((p) => p.poolStatePda));
+      const localOnly = localPools.filter((p) => !dbPdas.has(p.poolStatePda));
+
+      return [...dbMapped, ...localOnly];
     } catch { return []; }
-  }, [publicKey]);
+  }, [publicKey, dbPools]);
 
   // Investments are already denormalized at write time — no JOIN needed
   const investorInvestments = useMemo<EnrichedInvestment[]>(() => {
