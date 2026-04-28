@@ -29,6 +29,7 @@ import { useBlockFlip } from '@/hooks/useBlockFlip';
 import { POOL_SEED, PROGRAM_ID } from '@/anchor/setup';
 import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
 import { isAllowedImageUrl } from '@/lib/security';
+import { createPoolAction } from '@/actions/pool';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((m) => m.WalletMultiButton),
@@ -493,6 +494,23 @@ export default function SpecialistPage() {
       const existing: unknown[] = JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]');
       existing.push(metadata);
       localStorage.setItem('blockflip_pools', JSON.stringify(existing));
+
+      // Persist to Neon (non-blocking — on-chain tx already confirmed)
+      const validatedImageUrl = isAllowedImageUrl(imageUrl.trim()) ? imageUrl.trim() : '';
+      createPoolAction({
+        poolPda:         poolStatePda.toString(),
+        mintAddress:     preInfra?.mint ?? acceptedMint.trim(),
+        name:            name.trim(),
+        description:     description.trim(),
+        imageUrl:        validatedImageUrl,
+        targetCapital:   goalNum,
+        roiConservative: +roiConservador.toFixed(1),
+        roiBase:         +roiBase.toFixed(1),
+        roiOptimistic:   +roiOtimista.toFixed(1),
+        specialistWallet: publicKey.toString(),
+      }).then((res) => {
+        if (!res.success) console.error('[BlockFlip] DB save failed:', res.error);
+      });
 
       toast.dismiss(toastId);
       toast.success(`Pool #${poolId} → ${t('successStep2')}`, { duration: 8_000 });

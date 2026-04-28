@@ -1,0 +1,88 @@
+// BlockFlip — Prisma 7 schema
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────
+
+enum Role {
+  INVESTOR
+  SPECIALIST
+}
+
+enum PoolStatus {
+  PENDING    // Awaiting specialist skin-in-the-game on-chain
+  ACTIVE     // Fundraising open
+  FUNDED     // Target reached
+  LIQUIDATED // Cycle closed, yields distributed
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+
+  // Hybrid auth: wallet-only, email-only, or both
+  email         String?  @unique
+  passwordHash  String?
+  walletAddress String?  @unique
+
+  role      Role     @default(INVESTOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  investments  Investment[]
+  poolsCreated Pool[]       @relation("SpecialistPools")
+}
+
+model Pool {
+  id String @id @default(uuid())
+
+  // On-chain identifiers
+  poolPda     String @unique
+  mintAddress String @unique
+
+  // Off-chain metadata
+  name        String
+  description String?
+  imageUrl    String? // Must pass isAllowedImageUrl() before storing
+
+  // Financials (in USDC)
+  targetCapital Float
+  raisedCapital Float @default(0)
+  skinInGame    Float @default(0)
+
+  // ROI projection
+  roiConservative Float
+  roiBase         Float
+  roiOptimistic   Float
+
+  status    PoolStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  specialistId String
+  specialist   User         @relation("SpecialistPools", fields: [specialistId], references: [id])
+  investments  Investment[]
+}
+
+model Investment {
+  id        String   @id @default(uuid())
+  amount    Float // USDC
+  txHash    String   @unique
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+}

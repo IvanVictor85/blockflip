@@ -54,3 +54,5 @@ test-ledger/
 *.keypair
 *keypair.json
 id.json
+
+/src/generated/prisma
