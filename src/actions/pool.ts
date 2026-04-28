@@ -55,6 +55,31 @@ export async function createPoolAction(data: CreatePoolInput) {
     return { success: true, poolId: pool.id };
   } catch (error) {
     console.error('[BlockFlip] Failed to save Pool to database:', error);
-    return { success: false, error: 'Failed to create pool in database' };
+    return { success: false as const, error: 'Failed to create pool in database' };
+  }
+}
+
+export async function getPoolsAction() {
+  try {
+    const pools = await db.pool.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        specialist: {
+          select: { walletAddress: true },
+        },
+      },
+    });
+
+    return {
+      success: true as const,
+      data: pools.map((p) => ({
+        ...p,
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+      })),
+    };
+  } catch (error) {
+    console.error('[BlockFlip] Failed to fetch pools from database:', error);
+    return { success: false as const, error: 'Failed to fetch pools from database' };
   }
 }

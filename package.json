@@ -13,6 +13,7 @@
     "lint": "eslint --max-warnings=0",
     "type-check": "tsc --noEmit",
     "precheck": "npm run type-check && npm run lint",
+    "postinstall": "prisma generate",
     "vercel-build": "npm run build"
   },
   "dependencies": {
