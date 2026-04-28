@@ -80,7 +80,6 @@ const WalletMultiButton = dynamic(
 const usd = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n);
 
-const pct = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}%`;
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
