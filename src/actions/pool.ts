@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { Role } from '@/generated/prisma/enums';
+import { Role, OperationType } from '@/generated/prisma/enums';
 import { revalidatePath } from 'next/cache';
 import { isAllowedImageUrl } from '@/lib/security';
 
@@ -11,6 +11,12 @@ export interface CreatePoolInput {
   name: string;
   description?: string;
   imageUrl?: string;
+  location?: string;
+  cycleDays?: number;
+  operationType?: 'AUCTION' | 'DIRECT_PURCHASE';
+  acquisitionCost?: number;
+  renovationCost?: number;
+  legalCost?: number;
   targetCapital: number;
   roiConservative: number;
   roiBase: number;
@@ -41,6 +47,12 @@ export async function createPoolAction(data: CreatePoolInput) {
         name:            data.name,
         description:     data.description,
         imageUrl:        data.imageUrl,
+        location:        data.location,
+        cycleDays:       data.cycleDays,
+        operationType:   data.operationType ? OperationType[data.operationType] : OperationType.DIRECT_PURCHASE,
+        acquisitionCost: data.acquisitionCost,
+        renovationCost:  data.renovationCost,
+        legalCost:       data.legalCost,
         targetCapital:   data.targetCapital,
         roiConservative: data.roiConservative,
         roiBase:         data.roiBase,

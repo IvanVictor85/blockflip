@@ -75,6 +75,7 @@ interface DisplayPool {
   imageUrl: string;
   cycleDays: number | null;
   fundingGoal: number;
+  skinInGame: number;
   roi: { conservador: number; base: number; otimista: number };
   operator: string;
   createdAt: string;
@@ -98,6 +99,7 @@ function localToDisplay(p: OperatorPool): DisplayPool {
     imageUrl: p.imageUrl,
     cycleDays: p.cycleDays,
     fundingGoal: p.fundingGoal,
+    skinInGame: 0, // localStorage doesn't store this — DB is authoritative
     roi: p.roi,
     operator: p.operator,
     createdAt: p.createdAt,
@@ -414,7 +416,7 @@ function OperatorPoolCard({ pool }: { pool: DisplayPool }) {
           </div>
 
           {/* Financials */}
-          <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border text-sm">
+          <div className="grid grid-cols-3 gap-3 pt-1 border-t border-border text-sm">
             <div>
               <p className="text-xs text-muted-foreground">{t('fundingGoal')}</p>
               <p className="font-semibold mt-0.5">{usd(pool.fundingGoal)}</p>
@@ -422,6 +424,14 @@ function OperatorPoolCard({ pool }: { pool: DisplayPool }) {
             <div>
               <p className="text-xs text-muted-foreground">{t('cycle')}</p>
               <p className="font-semibold mt-0.5">{pool.cycleDays != null ? `${pool.cycleDays} ${t('cycleUnit')}` : '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Skin-in-Game</p>
+              <p className="font-semibold mt-0.5 text-[#14F195]">
+                {pool.skinInGame > 0
+                  ? `${usd(pool.skinInGame)} (${((pool.skinInGame / pool.fundingGoal) * 100).toFixed(1)}%)`
+                  : '—'}
+              </p>
             </div>
           </div>
 
@@ -486,6 +496,7 @@ export default function DashboardPage() {
           imageUrl: p.imageUrl ?? local?.imageUrl ?? '',
           cycleDays: local?.cycleDays ?? null,
           fundingGoal: p.targetCapital,
+          skinInGame: p.skinInGame,
           roi: {
             conservador: p.roiConservative,
             base: p.roiBase,

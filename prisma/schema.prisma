@@ -24,6 +24,11 @@ enum PoolStatus {
   LIQUIDATED // Cycle closed, yields distributed
 }
 
+enum OperationType {
+  AUCTION         // Arremate (leilão) — acquisition price is a ceiling bid
+  DIRECT_PURCHASE // Compra direta — acquisition price is fixed/negotiated
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────
 
 model User {
@@ -53,13 +58,27 @@ model Pool {
   name        String
   description String?
   imageUrl    String? // Must pass isAllowedImageUrl() before storing
+  location    String?
+  cycleDays   Int?
+
+  // Operation type — drives UI copy and ROI scenario interpretation
+  operationType OperationType @default(DIRECT_PURCHASE)
+
+  // Cost breakdown (validated at action layer: acquisitionCost + renovationCost + legalCost = targetCapital)
+  // For AUCTION: acquisitionCost is the ceiling bid (worst-case scenario)
+  // For DIRECT_PURCHASE: acquisitionCost is the fixed negotiated price
+  acquisitionCost Float? // Arremate ceiling OR compra direta value
+  renovationCost  Float? // Estimated renovation (Capex)
+  legalCost       Float? // Docs, taxes, legal fees
 
   // Financials (in USDC)
-  targetCapital Float
-  raisedCapital Float @default(0)
-  skinInGame    Float @default(0)
+  targetCapital Float      // Sum of the three costs above — authoritative fundraising target
+  raisedCapital Float      @default(0)
+  skinInGame    Float      @default(0)
 
   // ROI projection
+  // AUCTION:         conservative = bought at ceiling, optimistic = bought at floor
+  // DIRECT_PURCHASE: conservative/optimistic driven by sale price uncertainty
   roiConservative Float
   roiBase         Float
   roiOptimistic   Float
