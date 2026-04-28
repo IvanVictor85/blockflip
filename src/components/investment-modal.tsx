@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import {
   Loader2,
   CheckCircle2,
@@ -12,6 +12,9 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useInvestment, type BlockchainInvestParams } from '@/hooks/use-investment';
-import { getExplorerTxUrl } from '@/lib/solana';
+import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
 import { formatCurrency } from '@/data/mock-assets';
 import type { Asset } from '@/types';
 
@@ -100,7 +103,7 @@ function SuccessScreen({ txSignature, amountUsdc, tokenSymbol, onClose }: {
           variant="outline"
           size="sm"
           className="flex-1 border-[#14F195]/30 hover:border-[#14F195]/50 text-xs"
-          onClick={() => window.open(getExplorerTxUrl(txSignature), '_blank')}
+          onClick={() => openExternalUrl(getExplorerTxUrl(txSignature))}
         >
           <ExternalLink className="w-3 h-3 mr-1.5" />
           {t('viewOnExplorer')}
@@ -162,11 +165,24 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const displayTitle = nameKey ? (tNames as any)(nameKey) as string : asset.title;
 
-  // Wire real Anchor invest for on-chain pools; fall back to mock for demo assets
-  const blockchainParams: BlockchainInvestParams | undefined =
-    asset.poolId !== undefined && asset.poolVault && asset.investorAta
-      ? { poolId: asset.poolId, poolVault: asset.poolVault, investorTokenAccount: asset.investorAta }
-      : undefined;
+  // SECURITY FIX (Critical): ATA is always derived from the connected investor's wallet.
+  // Never read investorAta from localStorage — an operator-controlled address stored there
+  // could redirect investor funds to the operator's account.
+  const { publicKey } = useWallet();
+  const blockchainParams: BlockchainInvestParams | undefined = useMemo(() => {
+    if (!asset.poolId || !asset.poolVault || !asset.acceptedMint || !publicKey) {
+      return undefined;
+    }
+    const investorTokenAccount = getAssociatedTokenAddressSync(
+      new PublicKey(asset.acceptedMint),
+      publicKey  // investor's connected wallet — never the operator's
+    );
+    return {
+      poolId: asset.poolId,
+      poolVault: asset.poolVault,
+      investorTokenAccount: investorTokenAccount.toBase58(),
+    };
+  }, [asset, publicKey]);
 
   const { state, walletAddress, onAmountChange, submit, reset, isProcessing, canSubmit } =
     useInvestment(asset.id, asset.minInvestment, blockchainParams);

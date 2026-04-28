@@ -221,9 +221,20 @@ export function JsonLd() {
         <script
           key={index}
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }}
         />
       ))}
     </>
   );
+}
+
+// SECURITY FIX (Medium): Escape characters that could break out of the <script> context.
+// Without this, a value like `</script><script>alert(1)` would inject arbitrary JS.
+// JSON.stringify alone does NOT escape these sequences inside script tags.
+function safeJsonLd(obj: unknown): string {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/'/g, '\\u0027');
 }

@@ -55,6 +55,33 @@ export function isAllowedExternalUrl(url: string): boolean {
 }
 
 /**
+ * OWASP: SSRF / A10 — Validates image URLs against a strict allowlist.
+ * Prevents tracking pixels, internal network probing, and data: URI injection.
+ * Must be called before rendering any <img src> from user-supplied data.
+ */
+const ALLOWED_IMAGE_DOMAINS = [
+  'images.unsplash.com',
+  'ipfs.io',
+  'nftstorage.link',
+  'arweave.net',
+  'cloudflare-ipfs.com',
+];
+
+export function isAllowedImageUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const { protocol, hostname } = new URL(url);
+    // Block data:, blob:, javascript:, and http: (insecure)
+    if (protocol !== 'https:') return false;
+    return ALLOWED_IMAGE_DOMAINS.some(
+      (d) => hostname === d || hostname.endsWith(`.${d}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Generates a Solana Explorer URL for an address.
  * Only uses the whitelisted explorer domain.
  */

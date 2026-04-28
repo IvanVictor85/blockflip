@@ -42,6 +42,33 @@ export function getExplorerTxUrl(signature: string, cluster: 'mainnet' | 'devnet
   return `${SOLANA_EXPLORER_BASE}/${signature}${param}`;
 }
 
+// SECURITY FIX (High): Tabnapping prevention.
+// window.open(..., '_blank') without 'noopener,noreferrer' allows the opened page
+// to access window.opener and redirect the original tab to a phishing page.
+const ALLOWED_OPEN_HOSTNAMES = [
+  'explorer.solana.com',
+  'solscan.io',
+  'images.unsplash.com',
+];
+
+export function openExternalUrl(url: string): void {
+  try {
+    const { hostname } = new URL(url);
+    const isAllowed = ALLOWED_OPEN_HOSTNAMES.some(
+      (h) => hostname === h || hostname.endsWith(`.${h}`)
+    );
+    if (!isAllowed) {
+      console.warn('[BlockFlip][Security] Blocked external URL:', hostname);
+      return;
+    }
+  } catch {
+    return; // invalid URL
+  }
+  const win = window.open(url, '_blank', 'noopener,noreferrer');
+  // Fallback for browsers that block popups
+  if (!win) window.location.href = url;
+}
+
 // ─── Mock: Verificação de Saldo ───────────────────────────────────────────────
 
 /**

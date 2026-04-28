@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import {
@@ -27,7 +27,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useBlockFlip } from '@/hooks/useBlockFlip';
 import { POOL_SEED, PROGRAM_ID } from '@/anchor/setup';
-import { getExplorerTxUrl } from '@/lib/solana';
+import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
+import { isAllowedImageUrl } from '@/lib/security';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((m) => m.WalletMultiButton),
@@ -177,7 +178,7 @@ function SuccessScreen({
               </div>
             </div>
             <button
-              onClick={() => window.open(getExplorerTxUrl(result.sig), '_blank')}
+              onClick={() => openExternalUrl(getExplorerTxUrl(result.sig))}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[#14F195] transition-colors"
             >
               <ExternalLink className="h-3 w-3" />
@@ -290,12 +291,51 @@ function SuccessScreen({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+// ─── Unauthorized gate ────────────────────────────────────────────────────────
+
+function UnauthorizedGate() {
+  return (
+    <main className="min-h-screen bg-background flex items-center justify-center pt-16">
+      <div className="max-w-sm w-full mx-auto px-4 text-center flex flex-col items-center gap-6">
+        <div className="h-20 w-20 rounded-2xl bg-red-500/10 flex items-center justify-center">
+          <Lock className="h-9 w-9 text-red-500" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-red-500">Unauthorized Access</h1>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+            This wallet is not registered as a BlockFlip Specialist on-chain.
+            Contact the protocol authority to request authorization.
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function SpecialistPage() {
   const t = useTranslations('specialist');
   const router = useRouter();
   const { connection } = useConnection();
   const { connected, publicKey, sendTransaction } = useWallet();
-  const { createPool, depositSkinInGame, program, protocolStatePda } = useBlockFlip();
+  const { createPool, depositSkinInGame, program, protocolStatePda, deriveSpecialistRegistryPda } = useBlockFlip();
+
+  // SECURITY FIX (Critical): Verify on-chain authorization before rendering any
+  // specialist functionality. Without this check, any connected wallet could trigger
+  // handleGenerateTestInfra, spending real SOL before the contract rejects create_pool.
+  // null = checking | true = authorized | false = unauthorized
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!program || !publicKey) { setIsAuthorized(null); return; }
+    const registryPda = deriveSpecialistRegistryPda(publicKey);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (program.account as any).specialistRegistry
+      .fetch(registryPda)
+      .then(() => setIsAuthorized(true))
+      .catch(() => setIsAuthorized(false));
+  }, [program, publicKey, deriveSpecialistRegistryPda]);
 
   // Off-chain metadata
   const [name, setName]             = useState('');
@@ -438,7 +478,10 @@ export default function SpecialistPage() {
       const metadata = {
         poolId, poolStatePda: poolStatePda.toString(),
         name: name.trim(), location: location.trim(),
-        description: description.trim(), imageUrl: imageUrl.trim(),
+        description: description.trim(),
+        // SECURITY FIX (Medium): Only persist image URLs from the allowed whitelist.
+        // Prevents tracking pixels and internal network probing via operator-supplied URLs.
+        imageUrl: isAllowedImageUrl(imageUrl.trim()) ? imageUrl.trim() : '',
         cycleDays: parseInt(cycleDays) || 120,
         fundingGoal: goalNum, targetSalePrice: parseFloat(targetSalePrice) || 0,
         roi: { conservador: +roiConservador.toFixed(1), base: +roiBase.toFixed(1), otimista: +roiOtimista.toFixed(1) },
@@ -486,6 +529,17 @@ export default function SpecialistPage() {
       throw err;
     }
   }, [result, depositSkinInGame, t]);
+
+  // ─── Authorization gate ──────────────────────────────────────────────────
+  // Show loading state while checking; block UI if not authorized
+  if (connected && isAuthorized === null) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center pt-16">
+        <Loader2 className="h-8 w-8 animate-spin text-[#14F195]" />
+      </main>
+    );
+  }
+  if (connected && isAuthorized === false) return <UnauthorizedGate />;
 
   // ─── Render success flow ─────────────────────────────────────────────────
   if (result) {

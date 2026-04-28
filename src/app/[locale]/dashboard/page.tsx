@@ -19,7 +19,8 @@ import {
   Building2,
   ExternalLink,
 } from 'lucide-react';
-import { getExplorerTxUrl } from '@/lib/solana';
+import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
+import { isAllowedImageUrl } from '@/lib/security';
 
 // ─── Stored Investment (from localStorage) ───────────────────────────────────
 
@@ -144,7 +145,7 @@ function InvestmentCard({ inv }: { inv: EnrichedInvestment }) {
       <div className="flex flex-col sm:flex-row">
         {/* Image */}
         <div className="relative h-36 sm:h-auto sm:w-44 shrink-0 overflow-hidden bg-muted">
-          {inv.poolImageUrl && !imgError ? (
+          {inv.poolImageUrl && isAllowedImageUrl(inv.poolImageUrl) && !imgError ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={inv.poolImageUrl} alt={inv.poolName} className="absolute inset-0 w-full h-full object-cover" onError={() => setImgError(true)} />
           ) : (
@@ -200,7 +201,7 @@ function InvestmentCard({ inv }: { inv: EnrichedInvestment }) {
               TX: {inv.txSignature.slice(0, 10)}…{inv.txSignature.slice(-6)}
             </span>
             <button
-              onClick={() => window.open(getExplorerTxUrl(inv.txSignature), '_blank')}
+              onClick={() => openExternalUrl(getExplorerTxUrl(inv.txSignature))}
               className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-[#14F195] transition-colors"
             >
               <ExternalLink className="h-3 w-3" />
@@ -331,7 +332,7 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
       <div className="flex flex-col sm:flex-row">
         {/* Image */}
         <div className="relative h-36 sm:h-auto sm:w-40 shrink-0 overflow-hidden bg-muted">
-          {pool.imageUrl && !imgError ? (
+          {pool.imageUrl && isAllowedImageUrl(pool.imageUrl) && !imgError ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={pool.imageUrl} alt={pool.name} className="absolute inset-0 w-full h-full object-cover" onError={() => setImgError(true)} />
           ) : (
@@ -397,7 +398,7 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
             </span>
             {pool.sig && (
               <button
-                onClick={() => window.open(getExplorerTxUrl(pool.sig!), '_blank')}
+                onClick={() => openExternalUrl(getExplorerTxUrl(pool.sig!))}
                 className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-[#14F195] transition-colors"
               >
                 <ExternalLink className="h-3 w-3" />

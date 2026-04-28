@@ -12,6 +12,7 @@ import { InvestmentModal } from '@/components/investment-modal';
 import { Asset, AssetStatus } from '@/types';
 import { formatCurrency, formatBRL, formatPercentage } from '@/data/mock-assets';
 import { getSolanaExplorerUrl } from '@/lib/security';
+import { openExternalUrl } from '@/lib/solana';
 
 interface AssetCardProps {
   asset: Asset;
@@ -185,7 +186,7 @@ export function AssetCard({ asset, onSelect }: AssetCardProps) {
         {/* Smart Contract — icon link only */}
         <div className="flex justify-center">
           <button
-            onClick={() => window.open(getSolanaExplorerUrl(asset.smartContractAddress), '_blank')}
+            onClick={() => openExternalUrl(getSolanaExplorerUrl(asset.smartContractAddress))}
             className="flex items-center gap-1 text-[10px] text-muted-foreground/40 hover:text-[#14F195] transition-colors py-1"
             title={t('viewContract')}
           >
