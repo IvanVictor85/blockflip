@@ -195,6 +195,34 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
     }
   }, [open, state.step, onAmountChange]);
 
+  // Persist investment to localStorage on success — covers both blockchain and mock paths
+  useEffect(() => {
+    if (state.step !== 'success' || !state.txSignature || !walletAddress) return;
+    try {
+      const record = {
+        id: state.txSignature,
+        poolId: asset.poolId ?? -1,
+        assetId: asset.id,
+        investorWallet: walletAddress,
+        amountUsdc: state.amountUsdc,
+        txSignature: state.txSignature,
+        timestamp: new Date().toISOString(),
+        // Denormalized display data so the dashboard needs no JOIN
+        poolName: displayTitle,
+        poolLocation: asset.location,
+        poolImageUrl: asset.imageUrl,
+        targetRoi: asset.estimatedROI,
+        cycleDays: asset.cycleDays,
+      };
+      const existing: Array<{ txSignature?: string }> = JSON.parse(
+        localStorage.getItem('blockflip_investments') ?? '[]'
+      );
+      // Deduplicate — effect may fire twice in StrictMode
+      const deduped = existing.filter((r) => r.txSignature !== state.txSignature);
+      localStorage.setItem('blockflip_investments', JSON.stringify([...deduped, record]));
+    } catch { /* non-fatal */ }
+  }, [state.step, state.txSignature, state.amountUsdc, walletAddress, asset, displayTitle]);
+
   const handleOpenChange = (next: boolean) => {
     if (!next) reset();
     onOpenChange(next);

@@ -2,7 +2,8 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useWallet } from '@solana/wallet-adapter-react';
 import {
   TrendingUp,
@@ -18,14 +19,30 @@ import {
   Building2,
   ExternalLink,
 } from 'lucide-react';
-import {
-  mockSummary,
-  mockPortfolio,
-  mockTransactions,
-  type PortfolioProperty,
-  type Transaction,
-} from '@/data/dashboard';
 import { getExplorerTxUrl } from '@/lib/solana';
+
+// ─── Stored Investment (from localStorage) ───────────────────────────────────
+
+interface StoredInvestment {
+  id: string;
+  poolId: number;
+  assetId: string;
+  investorWallet: string;
+  amountUsdc: number;
+  txSignature: string;
+  timestamp: string;
+  // Denormalized at write time by InvestmentModal — no JOIN needed
+  poolName: string;
+  poolLocation: string;
+  poolImageUrl: string;
+  targetRoi: number;
+  cycleDays: number;
+}
+
+function readAllInvestments(): StoredInvestment[] {
+  try { return JSON.parse(localStorage.getItem('blockflip_investments') ?? '[]'); }
+  catch { return []; }
+}
 
 // ─── Operator Pool (from localStorage) ───────────────────────────────────────
 
@@ -64,23 +81,20 @@ const usd = (n: number) =>
 
 const pct = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}%`;
 
-const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const statusConfig = {
-  funding:   { label: 'Captando',  color: 'bg-blue-500/10 text-blue-600   dark:text-blue-400  border-blue-500/20' },
-  reforming: { label: 'Em Obra',   color: 'bg-amber-500/10 text-amber-600  dark:text-amber-400 border-amber-500/20' },
-  selling:   { label: 'À Venda',   color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
-  completed: { label: 'Concluído', color: 'bg-[#14F195]/10 text-emerald-700 dark:text-[#14F195] border-[#14F195]/20' },
+  funding:   { labelKey: 'statusFunding',   color: 'bg-blue-500/10 text-blue-600   dark:text-blue-400  border-blue-500/20' },
+  reforming: { labelKey: 'statusReforming', color: 'bg-amber-500/10 text-amber-600  dark:text-amber-400 border-amber-500/20' },
+  selling:   { labelKey: 'statusSelling',   color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
+  completed: { labelKey: 'statusCompleted', color: 'bg-[#14F195]/10 text-emerald-700 dark:text-[#14F195] border-[#14F195]/20' },
 } as const;
 
 const txConfig = {
-  deposit:    { label: 'Depósito',    Icon: ArrowDownLeft,  color: 'text-[#14F195]' },
-  investment: { label: 'Investimento',Icon: ArrowUpRight,   color: 'text-foreground' },
-  yield:      { label: 'Rendimento',  Icon: TrendingUp,     color: 'text-[#14F195]' },
-  withdrawal: { label: 'Saque',       Icon: ArrowUpRight,   color: 'text-red-500' },
+  deposit:    { labelKey: 'txTypeDeposit',    Icon: ArrowDownLeft, color: 'text-[#14F195]' },
+  investment: { labelKey: 'txTypeInvestment', Icon: ArrowUpRight,  color: 'text-foreground' },
+  yield:      { labelKey: 'txTypeYield',      Icon: TrendingUp,    color: 'text-[#14F195]' },
+  withdrawal: { labelKey: 'txTypeWithdrawal', Icon: ArrowUpRight,  color: 'text-red-500' },
 } as const;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -114,26 +128,39 @@ function SummaryCard({
   );
 }
 
-function PropertyCard({ p }: { p: PortfolioProperty }) {
-  const cfg = statusConfig[p.status];
-  const gain = p.currentValue - p.invested;
-  const gainPct = (gain / p.invested) * 100;
+// ─── EnrichedInvestment is now identical to StoredInvestment (fields denormalized at write time) ──
+
+type EnrichedInvestment = StoredInvestment;
+
+function InvestmentCard({ inv }: { inv: EnrichedInvestment }) {
+  const t = useTranslations('dashboard');
+  const [imgError, setImgError] = useState(false);
+  const investedAt = new Date(inv.timestamp).toLocaleDateString(undefined, {
+    day: '2-digit', month: 'short', year: 'numeric',
+  });
 
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col sm:flex-row">
-        {/* Property image */}
-        <div className="relative h-40 sm:h-auto sm:w-44 shrink-0 overflow-hidden bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={p.imageUrl}
-            alt={p.name}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+        {/* Image */}
+        <div className="relative h-36 sm:h-auto sm:w-44 shrink-0 overflow-hidden bg-muted">
+          {inv.poolImageUrl && !imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={inv.poolImageUrl} alt={inv.poolName} className="absolute inset-0 w-full h-full object-cover" onError={() => setImgError(true)} />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted">
+              <Building2 className="h-10 w-10 text-muted-foreground/30" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-black/30" />
           <div className="absolute bottom-3 left-3">
-            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm ${cfg.color}`}>
-              {cfg.label}
+            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm ${statusConfig.funding.color}`}>
+              {t(statusConfig.funding.labelKey)}
+            </span>
+          </div>
+          <div className="absolute top-3 left-3">
+            <span className="inline-flex items-center rounded-md bg-black/60 backdrop-blur-sm px-2 py-0.5 text-xs font-bold text-white">
+              Pool #{inv.poolId}
             </span>
           </div>
         </div>
@@ -142,78 +169,62 @@ function PropertyCard({ p }: { p: PortfolioProperty }) {
         <div className="flex-1 p-5 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="font-semibold text-base leading-tight">{p.name}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{p.location}</p>
+              <h3 className="font-semibold text-base leading-tight">{inv.poolName}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{inv.poolLocation}</p>
             </div>
-            <span className="font-mono text-xs text-muted-foreground shrink-0">{p.tokenSymbol}</span>
-          </div>
-
-          {/* Progress bars */}
-          <div className="flex flex-col gap-2">
-            {p.status !== 'completed' && p.status === 'funding' && (
-              <div>
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>Captação</span>
-                  <span className="font-medium">{p.fundingProgress}%</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${p.fundingProgress}%` }} />
-                </div>
-              </div>
-            )}
-            <div>
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>Progresso da Obra</span>
-                <span className="font-medium">{p.projectProgress}%</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-[#14F195] transition-all" style={{ width: `${p.projectProgress}%` }} />
-              </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+              <Clock className="h-3 w-3" />
+              {investedAt}
             </div>
           </div>
 
           {/* Financials */}
-          <div className="grid grid-cols-3 gap-3 pt-1 border-t border-border">
+          <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-muted/50 text-center">
             <div>
-              <p className="text-xs text-muted-foreground">Investido</p>
-              <p className="text-sm font-semibold mt-0.5">{usd(p.invested)}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('investedLabel')}</p>
+              <p className="text-sm font-bold mt-0.5">{usd(inv.amountUsdc)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Valor Atual</p>
-              <p className={`text-sm font-semibold mt-0.5 ${gain >= 0 ? 'text-[#14F195]' : 'text-red-500'}`}>
-                {usd(p.currentValue)}
-              </p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('roiTargetLabel')}</p>
+              <p className="text-sm font-bold text-[#14F195] mt-0.5">+{inv.targetRoi}%</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">
-                {p.status === 'completed' ? 'ROI Realizado' : 'ROI Alvo'}
-              </p>
-              <p className={`text-sm font-semibold mt-0.5 ${gain >= 0 ? 'text-[#14F195]' : 'text-muted-foreground'}`}>
-                {pct(p.status === 'completed' ? gainPct : p.targetRoi)}
-              </p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('cycle')}</p>
+              <p className="text-sm font-bold mt-0.5">{inv.cycleDays} {t('cycleUnit')}</p>
             </div>
           </div>
 
-          {/* Footer */}
-          {p.daysRemaining && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>{p.daysRemaining} dias restantes</span>
-            </div>
-          )}
-          {p.completedAt && (
-            <div className="flex items-center gap-1.5 text-xs text-[#14F195]">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>Concluído em {fmtDate(p.completedAt)}</span>
-            </div>
-          )}
+          {/* TX link */}
+          <div className="flex items-center gap-3 pt-1 border-t border-border">
+            <span className="text-[10px] font-mono text-muted-foreground truncate flex-1">
+              TX: {inv.txSignature.slice(0, 10)}…{inv.txSignature.slice(-6)}
+            </span>
+            <button
+              onClick={() => window.open(getExplorerTxUrl(inv.txSignature), '_blank')}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-[#14F195] transition-colors"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Explorer
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function TransactionRow({ tx }: { tx: Transaction }) {
+interface TxRow {
+  id: string;
+  type: keyof typeof txConfig;
+  description: string;
+  txHash: string;
+  amount: number;
+  date: string;
+  status: 'completed' | 'pending';
+}
+
+function TransactionRow({ tx }: { tx: TxRow }) {
+  const t = useTranslations('dashboard');
   const cfg = txConfig[tx.type];
   const isPositive = tx.amount > 0;
 
@@ -234,7 +245,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
       </td>
       <td className="py-3.5 px-4 hidden sm:table-cell">
         <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium text-muted-foreground">
-          {cfg.label}
+          {t(cfg.labelKey)}
         </span>
       </td>
       <td className="py-3.5 px-4 text-right">
@@ -243,16 +254,18 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         </p>
       </td>
       <td className="py-3.5 px-4 text-right hidden md:table-cell">
-        <p className="text-xs text-muted-foreground">{fmtDate(tx.date)}</p>
+        <p className="text-xs text-muted-foreground">
+          {new Date(tx.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+        </p>
       </td>
       <td className="py-3.5 px-4 hidden lg:table-cell">
         {tx.status === 'completed' ? (
           <span className="flex items-center gap-1 text-xs text-[#14F195]">
-            <CheckCircle2 className="h-3 w-3" /> Concluída
+            <CheckCircle2 className="h-3 w-3" /> {t('txCompleted')}
           </span>
         ) : (
           <span className="flex items-center gap-1 text-xs text-amber-500">
-            <CircleDot className="h-3 w-3" /> Pendente
+            <CircleDot className="h-3 w-3" /> {t('txPending')}
           </span>
         )}
       </td>
@@ -263,6 +276,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
 // ─── Empty / Not Connected ─────────────────────────────────────────────────────
 
 function ConnectWalletGate() {
+  const t = useTranslations('dashboard');
   return (
     <div className="min-h-screen bg-background flex items-center justify-center pt-16">
       <div className="max-w-sm w-full mx-auto px-4 text-center flex flex-col items-center gap-6">
@@ -270,9 +284,9 @@ function ConnectWalletGate() {
           <Wallet className="h-9 w-9 text-[#14F195]" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">Acesse seu Dashboard</h1>
+          <h1 className="text-xl font-bold">{t('connectTitle')}</h1>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Conecte sua carteira Solana para visualizar seu portfólio de investimentos, rendimentos acumulados e histórico de movimentações.
+            {t('connectMessage')}
           </p>
         </div>
         <WalletMultiButton
@@ -287,7 +301,7 @@ function ConnectWalletGate() {
           }}
         />
         <Link href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-          Voltar ao Marketplace
+          {t('connectBack')}
           <ChevronRight className="h-3 w-3" />
         </Link>
       </div>
@@ -298,26 +312,28 @@ function ConnectWalletGate() {
 // ─── Operator pool card ───────────────────────────────────────────────────────
 
 const poolStatusConfig = {
-  funding:   { label: 'Captando',  color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
-  pending:   { label: 'Pendente',  color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-  active:    { label: 'Em Obra',   color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
-  completed: { label: 'Concluído', color: 'bg-[#14F195]/10 text-emerald-700 dark:text-[#14F195] border-[#14F195]/20' },
+  funding:   { labelKey: 'statusFunding',   color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+  pending:   { labelKey: 'txPending',       color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+  active:    { labelKey: 'statusReforming', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
+  completed: { labelKey: 'statusCompleted', color: 'bg-[#14F195]/10 text-emerald-700 dark:text-[#14F195] border-[#14F195]/20' },
 } as const;
 
 function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
+  const t = useTranslations('dashboard');
+  const [imgError, setImgError] = useState(false);
   // Pools saved after depositSkinInGame are in Funding state; before = Pending
   const statusKey: keyof typeof poolStatusConfig = 'funding';
   const cfg = poolStatusConfig[statusKey];
-  const createdDate = new Date(pool.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+  const createdDate = new Date(pool.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
 
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col sm:flex-row">
         {/* Image */}
         <div className="relative h-36 sm:h-auto sm:w-40 shrink-0 overflow-hidden bg-muted">
-          {pool.imageUrl ? (
+          {pool.imageUrl && !imgError ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={pool.imageUrl} alt={pool.name} className="absolute inset-0 w-full h-full object-cover" />
+            <img src={pool.imageUrl} alt={pool.name} className="absolute inset-0 w-full h-full object-cover" onError={() => setImgError(true)} />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted">
               <Building2 className="h-10 w-10 text-muted-foreground/30" />
@@ -326,7 +342,7 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
           <div className="absolute inset-0 bg-black/30" />
           <div className="absolute bottom-3 left-3">
             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm ${cfg.color}`}>
-              {cfg.label}
+              {t(cfg.labelKey)}
             </span>
           </div>
           <div className="absolute top-3 left-3">
@@ -349,15 +365,15 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
           {/* ROI range */}
           <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-muted/50 text-center">
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Conservador</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('roiConservative')}</p>
               <p className="text-sm font-bold text-[#14F195] mt-0.5">+{pool.roi.conservador}%</p>
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Base</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('roiBase')}</p>
               <p className="text-sm font-bold text-[#14F195] mt-0.5">+{pool.roi.base}%</p>
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Otimista</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('roiOptimistic')}</p>
               <p className="text-sm font-bold text-[#14F195] mt-0.5">+{pool.roi.otimista}%</p>
             </div>
           </div>
@@ -365,12 +381,12 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
           {/* Financials */}
           <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border text-sm">
             <div>
-              <p className="text-xs text-muted-foreground">Meta de Captação</p>
+              <p className="text-xs text-muted-foreground">{t('fundingGoal')}</p>
               <p className="font-semibold mt-0.5">{usd(pool.fundingGoal)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Ciclo</p>
-              <p className="font-semibold mt-0.5">{pool.cycleDays} dias</p>
+              <p className="text-xs text-muted-foreground">{t('cycle')}</p>
+              <p className="font-semibold mt-0.5">{pool.cycleDays} {t('cycleUnit')}</p>
             </div>
           </div>
 
@@ -399,16 +415,39 @@ function OperatorPoolCard({ pool }: { pool: OperatorPool }) {
 
 export default function DashboardPage() {
   const { publicKey } = useWallet();
+  const t = useTranslations('dashboard');
 
-  // useMemo: recomputes only when publicKey changes. No useEffect needed.
-  // Dashboard only renders its content after wallet connects (publicKey is always
-  // null on SSR), so there is no hydration mismatch for this derived value.
+  // useMemo: recomputes only when publicKey changes — same pattern as operatorPools.
   const operatorPools = useMemo<OperatorPool[]>(() => {
     if (!publicKey || typeof window === 'undefined') return [];
     try {
       return readAllPools().filter((p) => p.operator === publicKey.toBase58());
     } catch { return []; }
   }, [publicKey]);
+
+  // Investments are already denormalized at write time — no JOIN needed
+  const investorInvestments = useMemo<EnrichedInvestment[]>(() => {
+    if (!publicKey || typeof window === 'undefined') return [];
+    try {
+      const wallet = publicKey.toBase58();
+      return readAllInvestments().filter((inv) => inv.investorWallet === wallet);
+    } catch { return []; }
+  }, [publicKey]);
+
+  // Derived summary from real investments
+  const totalInvested = investorInvestments.reduce((s, i) => s + i.amountUsdc, 0);
+  const uniquePools = new Set(investorInvestments.map((i) => i.poolId)).size;
+
+  // Convert investments to transaction rows (t available after useTranslations call above)
+  const investmentTxRows: TxRow[] = investorInvestments.map((inv) => ({
+    id: inv.id,
+    type: 'investment',
+    description: t('txDescription', { poolName: inv.poolName }),
+    txHash: inv.txSignature,
+    amount: -inv.amountUsdc,
+    date: inv.timestamp,
+    status: 'completed',
+  }));
 
   if (!publicKey) return <ConnectWalletGate />;
 
@@ -421,9 +460,9 @@ export default function DashboardPage() {
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Meu Portfólio</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t('pageTitle')}</h1>
             <p className="text-sm text-muted-foreground mt-0.5 font-mono">
-              Carteira: <span className="text-foreground">{walletShort}</span>
+              {t('walletLabel')}: <span className="text-foreground">{walletShort}</span>
             </p>
           </div>
           <Link
@@ -431,110 +470,117 @@ export default function DashboardPage() {
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-muted transition-colors shadow-sm"
           >
             <Banknote className="h-4 w-4 text-[#14F195]" />
-            Investir em Novos Imóveis
+            {t('newInvestment')}
           </Link>
         </div>
 
         {/* ── Summary Cards ──────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <SummaryCard
-            label="Total Investido"
-            value={usd(mockSummary.totalInvested)}
-            sub="Em 3 propriedades"
+            label={t('totalInvested')}
+            value={usd(totalInvested)}
+            sub={uniquePools > 0 ? t('inProperties', { count: uniquePools }) : t('noDeposit')}
             icon={Wallet}
           />
           <SummaryCard
-            label="Valor do Portfólio"
-            value={usd(mockSummary.portfolioValue)}
-            sub={`${pct(mockSummary.yieldPct)} vs. investido`}
-            subColor="text-[#14F195]"
+            label={t('portfolioValue')}
+            value={usd(totalInvested)}
+            sub={totalInvested > 0 ? t('inFunding') : t('startInvesting')}
             icon={BarChart3}
           />
           <SummaryCard
-            label="Rendimento Acumulado"
-            value={usd(mockSummary.totalYield)}
-            sub={`${mockSummary.activeDeals} ativo${mockSummary.activeDeals > 1 ? 's' : ''} · ${mockSummary.completedDeals} concluído`}
-            subColor="text-[#14F195]"
+            label={t('accumulatedYield')}
+            value={usd(0)}
+            sub={t('activeAssets', { count: investorInvestments.length })}
             icon={TrendingUp}
           />
-        </div>
-
-        {/* ── Performance Bar ────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold">Performance Geral</p>
-            <span className="text-sm font-bold text-[#14F195]">{pct(mockSummary.yieldPct)}</span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#14F195] to-[#0ED47F] transition-all duration-700"
-              style={{ width: `${Math.min(mockSummary.yieldPct * 3, 100)}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-muted-foreground mt-2">
-            <span>0%</span>
-            <span>Meta: 30% a.a.</span>
-          </div>
         </div>
 
         {/* ── Portfolio ──────────────────────────────────────────────── */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold">Meus Investimentos</h2>
-            <span className="text-xs text-muted-foreground">{mockPortfolio.length} propriedades</span>
+            <h2 className="text-base font-semibold">{t('myInvestments')}</h2>
+            <span className="text-xs text-muted-foreground">
+              {investorInvestments.length > 0
+                ? t('investmentsCount', { count: investorInvestments.length })
+                : t('noInvestments')}
+            </span>
           </div>
-          <div className="flex flex-col gap-4">
-            {mockPortfolio.map((p) => (
-              <PropertyCard key={p.id} p={p} />
-            ))}
-          </div>
+          {investorInvestments.length > 0 ? (
+            <div className="flex flex-col gap-4">
+              {investorInvestments.map((inv) => (
+                <InvestmentCard key={inv.id} inv={inv} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 flex flex-col items-center gap-4 text-center">
+              <div className="h-14 w-14 rounded-2xl bg-[#14F195]/10 flex items-center justify-center">
+                <Building2 className="h-7 w-7 text-[#14F195]" />
+              </div>
+              <div>
+                <p className="font-semibold">{t('emptyTitle')}</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                  {t('emptyMessage')}
+                </p>
+              </div>
+              <Link
+                href="/#marketplace"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#14F195] text-black font-semibold px-5 py-2.5 text-sm hover:bg-[#0ED47F] transition-colors"
+              >
+                <Banknote className="h-4 w-4" />
+                {t('exploreMarketplace')}
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* ── Transaction History ────────────────────────────────────── */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold">Histórico de Movimentações</h2>
-            <span className="text-xs text-muted-foreground">{mockTransactions.length} transações</span>
-          </div>
-          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Descrição
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">
-                    Tipo
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Valor
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">
-                    Data
-                  </th>
-                  <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockTransactions.map((tx) => (
-                  <TransactionRow key={tx.id} tx={tx} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {investmentTxRows.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold">{t('txHistory')}</h2>
+              <span className="text-xs text-muted-foreground">{t('txCount', { count: investmentTxRows.length })}</span>
+            </div>
+            <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      {t('colDescription')}
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">
+                      {t('colType')}
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      {t('colValue')}
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">
+                      {t('colDate')}
+                    </th>
+                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">
+                      {t('colStatus')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {investmentTxRows.map((tx) => (
+                    <TransactionRow key={tx.id} tx={tx} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {/* ── Operator Pools ─────────────────────────────────────────── */}
         {operatorPools.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-base font-semibold">Pools que Opero</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Ativos criados e gerenciados pela sua carteira</p>
+                <h2 className="text-base font-semibold">{t('poolsOperated')}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{t('poolsOperatedSub')}</p>
               </div>
-              <span className="text-xs text-muted-foreground">{operatorPools.length} pool{operatorPools.length > 1 ? 's' : ''}</span>
+              <span className="text-xs text-muted-foreground">{t('poolsCount', { count: operatorPools.length })}</span>
             </div>
             <div className="flex flex-col gap-4">
               {operatorPools.map((pool) => (
@@ -546,8 +592,7 @@ export default function DashboardPage() {
 
         {/* ── Footer note ────────────────────────────────────────────── */}
         <p className="text-center text-xs text-muted-foreground pb-4">
-          Dados em tempo real via Solana Devnet · Valores em USDC (simulação) ·{' '}
-          <span className="text-[#14F195]">BlockFlip Protocol v3</span>
+          {t('footerNote')}
         </p>
 
       </div>
