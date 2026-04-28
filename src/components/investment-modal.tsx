@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { useInvestment, type BlockchainInvestParams } from '@/hooks/use-investment';
 import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
 import { formatCurrency } from '@/data/mock-assets';
+import { createInvestmentAction } from '@/actions/investment';
 import type { Asset } from '@/types';
 
 // ─── Ícone de progresso do step atual ────────────────────────────────────────
@@ -211,9 +212,11 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
     }
   }, [open, state.step, onAmountChange]);
 
-  // Persist investment to localStorage on success — covers both blockchain and mock paths
+  // Persist investment on success — covers both blockchain and mock paths
   useEffect(() => {
     if (state.step !== 'success' || !state.txSignature || !walletAddress) return;
+
+    // 1. localStorage (immediate, always works)
     try {
       const record = {
         id: state.txSignature,
@@ -223,7 +226,6 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
         amountUsdc: state.amountUsdc,
         txSignature: state.txSignature,
         timestamp: new Date().toISOString(),
-        // Denormalized display data so the dashboard needs no JOIN
         poolName: displayTitle,
         poolLocation: asset.location,
         poolImageUrl: asset.imageUrl,
@@ -237,6 +239,16 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
       const deduped = existing.filter((r) => r.txSignature !== state.txSignature);
       localStorage.setItem('blockflip_investments', JSON.stringify([...deduped, record]));
     } catch { /* non-fatal */ }
+
+    // 2. Neon DB (non-blocking — mock assets will return "Pool not found", that's expected)
+    createInvestmentAction({
+      poolPda:       asset.smartContractAddress,
+      investorWallet: walletAddress,
+      amount:        state.amountUsdc,
+      txHash:        state.txSignature,
+    }).then((res) => {
+      if (!res.success) console.warn('[BlockFlip] DB investment save:', res.error);
+    });
   }, [state.step, state.txSignature, state.amountUsdc, walletAddress, asset, displayTitle]);
 
   const handleOpenChange = (next: boolean) => {
