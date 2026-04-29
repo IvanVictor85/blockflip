@@ -20,6 +20,10 @@ interface StoredPool {
   description: string;
   imageUrl: string;
   cycleDays: number;
+  operationType?: 'AUCTION' | 'DIRECT_PURCHASE';
+  acquisitionCost?: number;
+  renovationCost?: number;
+  legalCost?: number;
   fundingGoal: number;
   targetSalePrice: number;
   roi: { conservador: number; base: number; otimista: number };
@@ -67,6 +71,11 @@ function storedPoolToAsset(p: StoredPool): Asset {
     poolVault: p.vault ?? undefined,
     acceptedMint: p.acceptedMint ?? undefined,
     investorAta: p.operatorAta ?? undefined, // same wallet in demo
+    // Cost breakdown (present for pools created after this feature)
+    operationType: p.operationType,
+    acquisitionCost: p.acquisitionCost,
+    renovationCost: p.renovationCost,
+    legalCost: p.legalCost,
   };
 }
 

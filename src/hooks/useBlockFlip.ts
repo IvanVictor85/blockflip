@@ -11,6 +11,7 @@ import {
   SPECIALIST_SEED,
   POOL_SEED,
   POSITION_SEED,
+  TOKEN_DECIMALS,
 } from '@/anchor/setup';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -117,17 +118,36 @@ export function useBlockFlip() {
       );
       const acceptedMint = new PublicKey(acceptedMintStr);
 
-      const sig = await program.methods
-        .createPool(new BN(fundingGoal), new BN(maxInvestment))
-        .accounts({
-          protocolState: protocolStatePda,
-          poolState: poolStatePda,
-          specialistRegistry,
-          acceptedMint,
-          operator: wallet.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc({ commitment: 'confirmed' });
+      let sig: string;
+      try {
+        sig = await program.methods
+          .createPool(new BN(fundingGoal), new BN(maxInvestment))
+          .accounts({
+            protocolState: protocolStatePda,
+            poolState: poolStatePda,
+            specialistRegistry,
+            acceptedMint,
+            operator: wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc({ commitment: 'confirmed' });
+      } catch (err: unknown) {
+        const msg = (err as Error)?.message ?? '';
+        // "already processed" → the TX landed. Recover state from chain.
+        if (!msg.includes('already been processed')) throw err;
+
+        // poolCount was incremented on-chain — the created pool is at poolCount - 1
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updated = await (program.account as any).protocolState.fetch(protocolStatePda);
+        const createdId: number = updated.poolCount.toNumber() - 1;
+        const [recoveredPda] = PublicKey.findProgramAddressSync(
+          [POOL_SEED, poolIdToBuffer(createdId)],
+          PROGRAM_ID
+        );
+        // Try to extract signature from error message, fall back to empty string
+        const match = msg.match(/[1-9A-HJ-NP-Za-km-z]{87,88}/);
+        return { sig: match ? match[0] : '', poolStatePda: recoveredPda, poolId: createdId };
+      }
 
       return { sig, poolStatePda, poolId };
     },
@@ -192,7 +212,7 @@ export function useBlockFlip() {
       );
 
       const sig = await program.methods
-        .invest(new BN(amount))
+        .invest(new BN(Math.round(amount * 10 ** TOKEN_DECIMALS)))
         .accounts({
           poolState: poolStatePda,
           investorPosition: investorPositionPda,

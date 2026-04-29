@@ -48,6 +48,11 @@ export interface Asset {
   poolVault?: string;
   acceptedMint?: string;
   investorAta?: string;
+  // Cost breakdown (present for pools created after cost-breakdown feature)
+  operationType?: 'AUCTION' | 'DIRECT_PURCHASE';
+  acquisitionCost?: number;
+  renovationCost?: number;
+  legalCost?: number;
 }
 
 // ─── Investment Flow State Machine ───────────────────────────────────────────

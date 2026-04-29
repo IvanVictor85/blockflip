@@ -10,6 +10,9 @@ import {
   ArrowRight,
   ExternalLink,
   ShieldCheck,
+  Gavel,
+  HardHat,
+  FileText,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -71,6 +74,53 @@ function FeeSummary({ capital, protocolFee, total, tokensReceived, tokenSymbol }
       <div className="flex justify-between text-xs text-muted-foreground pt-1">
         <span>{t('feeTokens')}</span>
         <span className="font-mono">{tokensReceived.toLocaleString()} {tokenSymbol}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Breakdown de Custo do Imóvel ────────────────────────────────────────────
+function CostBreakdown({ asset }: { asset: Asset }) {
+  const { acquisitionCost = 0, renovationCost = 0, legalCost = 0, operationType, fundingGoal } = asset;
+  if (!acquisitionCost && !renovationCost && !legalCost) return null;
+  const isAuction = operationType === 'AUCTION';
+
+  return (
+    <div className="rounded-xl bg-secondary/40 border border-border p-4 space-y-2.5 text-sm">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+        Estrutura de Custo
+      </p>
+      {acquisitionCost > 0 && (
+        <div className="flex justify-between items-center">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <Gavel className="h-3.5 w-3.5 shrink-0" />
+            {isAuction ? 'Teto do Arremate' : 'Valor de Compra'}
+          </span>
+          <span className="font-medium tabular-nums">{formatCurrency(acquisitionCost)}</span>
+        </div>
+      )}
+      {renovationCost > 0 && (
+        <div className="flex justify-between items-center">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <HardHat className="h-3.5 w-3.5 shrink-0" />
+            Reforma
+          </span>
+          <span className="font-medium tabular-nums">{formatCurrency(renovationCost)}</span>
+        </div>
+      )}
+      {legalCost > 0 && (
+        <div className="flex justify-between items-center">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            Documentação
+          </span>
+          <span className="font-medium tabular-nums">{formatCurrency(legalCost)}</span>
+        </div>
+      )}
+      <div className="h-px bg-border" />
+      <div className="flex justify-between items-center font-semibold">
+        <span>Total a Captar</span>
+        <span className="text-[#14F195] tabular-nums">{formatCurrency(fundingGoal)}</span>
       </div>
     </div>
   );
@@ -306,6 +356,9 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
                 <p className="font-bold">{fundingPct}%</p>
               </div>
             </div>
+
+            {/* Breakdown de custo (apenas pools reais com dados de custo) */}
+            <CostBreakdown asset={asset} />
 
             {/* Input de valor */}
             <div className="space-y-2">

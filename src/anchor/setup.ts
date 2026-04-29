@@ -11,3 +11,6 @@ export const PROTOCOL_SEED   = Buffer.from('blockflip_v1');
 export const SPECIALIST_SEED = Buffer.from('specialist');
 export const POOL_SEED       = Buffer.from('pool');
 export const POSITION_SEED   = Buffer.from('position');
+
+// Token precision — 0 for mock SPL (devnet test token); change to 6 for real USDC
+export const TOKEN_DECIMALS = 0;

@@ -498,6 +498,10 @@ export default function SpecialistPage() {
         description: description.trim(),
         imageUrl: validatedImageUrl,
         cycleDays: cycleInt,
+        operationType,
+        acquisitionCost: parseFloat(acquisitionCost) || 0,
+        renovationCost:  parseFloat(renovationCost)  || 0,
+        legalCost:       parseFloat(legalCost)        || 0,
         fundingGoal: goalNum, targetSalePrice: parseFloat(targetSalePrice) || 0,
         roi: { conservador: +roiConservador.toFixed(1), base: +roiBase.toFixed(1), otimista: +roiOtimista.toFixed(1) },
         operator: publicKey.toString(), createdAt: new Date().toISOString(), sig,
@@ -724,14 +728,29 @@ export default function SpecialistPage() {
                     </div>
                   </Field>
                 </div>
-                {/* Calculated total */}
-                <div className="flex items-center justify-between pt-1 border-t border-border">
-                  <span className="text-xs text-muted-foreground">Total a captar (calculado)</span>
-                  <span className={`text-sm font-bold tabular-nums ${calculatedTargetCapital > 0 ? 'text-[#14F195]' : 'text-muted-foreground'}`}>
-                    {calculatedTargetCapital > 0
-                      ? `$${calculatedTargetCapital.toLocaleString('en-US')}`
-                      : '—'}
-                  </span>
+                {/* Calculated total + SiG indicator */}
+                <div className="pt-1 border-t border-border space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Total a captar (calculado)</span>
+                    <span className={`text-sm font-bold tabular-nums ${calculatedTargetCapital > 0 ? 'text-[#14F195]' : 'text-muted-foreground'}`}>
+                      {calculatedTargetCapital > 0
+                        ? `$${calculatedTargetCapital.toLocaleString('en-US')}`
+                        : '—'}
+                    </span>
+                  </div>
+                  {calculatedTargetCapital > 0 && (
+                    <div className="flex items-center justify-between rounded-lg bg-[#14F195]/5 border border-[#14F195]/20 px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="h-3.5 w-3.5 text-[#14F195] shrink-0" />
+                        <span className="text-xs text-muted-foreground">
+                          Skin-in-Game mínimo exigido <span className="text-[10px]">(5%)</span>
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold text-[#14F195] tabular-nums">
+                        ${(calculatedTargetCapital * 0.05).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

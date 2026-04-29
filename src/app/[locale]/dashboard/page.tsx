@@ -18,6 +18,9 @@ import {
   ChevronRight,
   Building2,
   ExternalLink,
+  ShieldCheck,
+  Gavel,
+  Handshake,
 } from 'lucide-react';
 import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
 import { isAllowedImageUrl } from '@/lib/security';
@@ -93,6 +96,10 @@ interface DisplayPool {
   cycleDays: number | null;
   fundingGoal: number;
   skinInGame: number;
+  operationType?: 'AUCTION' | 'DIRECT_PURCHASE';
+  acquisitionCost?: number | null;
+  renovationCost?: number | null;
+  legalCost?: number | null;
   roi: { conservador: number; base: number; otimista: number };
   operator: string;
   createdAt: string;
@@ -117,6 +124,7 @@ function localToDisplay(p: OperatorPool): DisplayPool {
     cycleDays: p.cycleDays,
     fundingGoal: p.fundingGoal,
     skinInGame: 0, // localStorage doesn't store this — DB is authoritative
+    operationType: (p as { operationType?: 'AUCTION' | 'DIRECT_PURCHASE' }).operationType,
     roi: p.roi,
     operator: p.operator,
     createdAt: p.createdAt,
@@ -373,10 +381,26 @@ const poolStatusConfig = {
 function OperatorPoolCard({ pool }: { pool: DisplayPool }) {
   const t = useTranslations('dashboard');
   const [imgError, setImgError] = useState(false);
-  // Pools saved after depositSkinInGame are in Funding state; before = Pending
   const statusKey: keyof typeof poolStatusConfig = 'funding';
   const cfg = poolStatusConfig[statusKey];
   const createdDate = new Date(pool.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const isAuction = pool.operationType === 'AUCTION';
+  const opBadge = pool.operationType
+    ? {
+        label: isAuction ? 'Arremate' : 'Compra Direta',
+        Icon: isAuction ? Gavel : Handshake,
+        cls: isAuction
+          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+          : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+      }
+    : null;
+
+  const skinPct = pool.skinInGame > 0
+    ? ((pool.skinInGame / pool.fundingGoal) * 100).toFixed(1)
+    : null;
+
+  const totalCost = (pool.acquisitionCost ?? 0) + (pool.renovationCost ?? 0) + (pool.legalCost ?? 0);
 
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -392,10 +416,16 @@ function OperatorPoolCard({ pool }: { pool: DisplayPool }) {
             </div>
           )}
           <div className="absolute inset-0 bg-black/30" />
-          <div className="absolute bottom-3 left-3">
+          <div className="absolute bottom-3 left-3 flex flex-col gap-1">
             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium backdrop-blur-sm ${cfg.color}`}>
               {t(cfg.labelKey)}
             </span>
+            {opBadge && (
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm ${opBadge.cls}`}>
+                <opBadge.Icon className="h-2.5 w-2.5" />
+                {opBadge.label}
+              </span>
+            )}
           </div>
           <div className="absolute top-3 left-3">
             <span className="inline-flex items-center rounded-md bg-black/60 backdrop-blur-sm px-2 py-0.5 text-xs font-bold text-white">
@@ -441,14 +471,47 @@ function OperatorPoolCard({ pool }: { pool: DisplayPool }) {
               <p className="font-semibold mt-0.5">{pool.cycleDays != null ? `${pool.cycleDays} ${t('cycleUnit')}` : '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Skin-in-Game</p>
-              <p className="font-semibold mt-0.5 text-[#14F195]">
-                {pool.skinInGame > 0
-                  ? `${usd(pool.skinInGame)} (${((pool.skinInGame / pool.fundingGoal) * 100).toFixed(1)}%)`
-                  : '—'}
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <ShieldCheck className="h-3 w-3 text-[#14F195]" />
+                Skin-in-Game
               </p>
+              {skinPct ? (
+                <div className="mt-0.5">
+                  <p className="font-semibold text-[#14F195]">{usd(pool.skinInGame)}</p>
+                  <p className="text-[10px] text-[#14F195]/70">{skinPct}% do total</p>
+                </div>
+              ) : (
+                <p className="font-semibold mt-0.5 text-muted-foreground/50">—</p>
+              )}
             </div>
           </div>
+
+          {/* Cost breakdown (only when DB has the data) */}
+          {totalCost > 0 && (
+            <div className="pt-1 border-t border-border space-y-1.5">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Estrutura de Custo</p>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                {(pool.acquisitionCost ?? 0) > 0 && (
+                  <div className="rounded-lg bg-muted/50 p-2">
+                    <p className="text-[10px] text-muted-foreground">{isAuction ? 'Arremate' : 'Aquisição'}</p>
+                    <p className="font-semibold mt-0.5 tabular-nums">{usd(pool.acquisitionCost!)}</p>
+                  </div>
+                )}
+                {(pool.renovationCost ?? 0) > 0 && (
+                  <div className="rounded-lg bg-muted/50 p-2">
+                    <p className="text-[10px] text-muted-foreground">Reforma</p>
+                    <p className="font-semibold mt-0.5 tabular-nums">{usd(pool.renovationCost!)}</p>
+                  </div>
+                )}
+                {(pool.legalCost ?? 0) > 0 && (
+                  <div className="rounded-lg bg-muted/50 p-2">
+                    <p className="text-[10px] text-muted-foreground">Documentação</p>
+                    <p className="font-semibold mt-0.5 tabular-nums">{usd(pool.legalCost!)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* PDA + explorer link */}
           <div className="flex items-center gap-3 pt-1 border-t border-border">
@@ -507,11 +570,15 @@ export default function DashboardPage() {
           poolId: local?.poolId ?? null,
           poolStatePda: p.poolPda,
           name: p.name,
-          location: local?.location ?? '',
+          location: p.location ?? local?.location ?? '',
           imageUrl: p.imageUrl ?? local?.imageUrl ?? '',
-          cycleDays: local?.cycleDays ?? null,
+          cycleDays: p.cycleDays ?? local?.cycleDays ?? null,
           fundingGoal: p.targetCapital,
           skinInGame: p.skinInGame,
+          operationType: (p.operationType as 'AUCTION' | 'DIRECT_PURCHASE') ?? undefined,
+          acquisitionCost: p.acquisitionCost,
+          renovationCost: p.renovationCost,
+          legalCost: p.legalCost,
           roi: {
             conservador: p.roiConservative,
             base: p.roiBase,
