@@ -22,6 +22,7 @@ import {
 import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
 import { isAllowedImageUrl } from '@/lib/security';
 import { getPoolsAction } from '@/actions/pool';
+import { getInvestmentsAction } from '@/actions/investment';
 
 // ─── Stored Investment (from localStorage) ───────────────────────────────────
 
@@ -44,6 +45,22 @@ interface StoredInvestment {
 function readAllInvestments(): StoredInvestment[] {
   try { return JSON.parse(localStorage.getItem('blockflip_investments') ?? '[]'); }
   catch { return []; }
+}
+
+// ─── Unified investment display type (DB + localStorage merged) ───────────────
+
+interface DisplayInvestment {
+  id: string;
+  txSignature: string;
+  investorWallet: string;
+  amountUsdc: number;
+  timestamp: string;
+  poolName: string;
+  poolLocation: string;
+  poolImageUrl: string;
+  targetRoi: number;
+  cycleDays: number | null;
+  poolId: number | null; // on-chain pool ID (localStorage only)
 }
 
 // ─── Operator Pool (raw localStorage shape) ───────────────────────────────────
@@ -165,11 +182,7 @@ function SummaryCard({
   );
 }
 
-// ─── EnrichedInvestment is now identical to StoredInvestment (fields denormalized at write time) ──
-
-type EnrichedInvestment = StoredInvestment;
-
-function InvestmentCard({ inv }: { inv: EnrichedInvestment }) {
+function InvestmentCard({ inv }: { inv: DisplayInvestment }) {
   const t = useTranslations('dashboard');
   const [imgError, setImgError] = useState(false);
   const investedAt = new Date(inv.timestamp).toLocaleDateString(undefined, {
@@ -195,11 +208,13 @@ function InvestmentCard({ inv }: { inv: EnrichedInvestment }) {
               {t(statusConfig.funding.labelKey)}
             </span>
           </div>
-          <div className="absolute top-3 left-3">
-            <span className="inline-flex items-center rounded-md bg-black/60 backdrop-blur-sm px-2 py-0.5 text-xs font-bold text-white">
-              Pool #{inv.poolId}
-            </span>
-          </div>
+          {inv.poolId != null && (
+            <div className="absolute top-3 left-3">
+              <span className="inline-flex items-center rounded-md bg-black/60 backdrop-blur-sm px-2 py-0.5 text-xs font-bold text-white">
+                Pool #{inv.poolId}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -227,7 +242,7 @@ function InvestmentCard({ inv }: { inv: EnrichedInvestment }) {
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('cycle')}</p>
-              <p className="text-sm font-bold mt-0.5">{inv.cycleDays} {t('cycleUnit')}</p>
+              <p className="text-sm font-bold mt-0.5">{inv.cycleDays != null ? `${inv.cycleDays} ${t('cycleUnit')}` : '—'}</p>
             </div>
           </div>
 
@@ -516,14 +531,62 @@ export default function DashboardPage() {
     } catch { return []; }
   }, [publicKey, dbPools]);
 
-  // Investments are already denormalized at write time — no JOIN needed
-  const investorInvestments = useMemo<EnrichedInvestment[]>(() => {
+  // DB investments fetched asynchronously
+  type DbInvestment = Extract<Awaited<ReturnType<typeof getInvestmentsAction>>, { success: true }>['data'][number];
+  const [dbInvestments, setDbInvestments] = useState<DbInvestment[]>([]);
+
+  useEffect(() => {
+    if (!publicKey) return;
+    getInvestmentsAction(publicKey.toBase58()).then((res) => {
+      if (res.success) setDbInvestments(res.data);
+    });
+  }, [publicKey]);
+
+  // Merge DB + localStorage: DB wins, localStorage fills missing fields and covers pre-migration records
+  const investorInvestments = useMemo<DisplayInvestment[]>(() => {
     if (!publicKey || typeof window === 'undefined') return [];
     try {
       const wallet = publicKey.toBase58();
-      return readAllInvestments().filter((inv) => inv.investorWallet === wallet);
+      const local = readAllInvestments().filter((inv) => inv.investorWallet === wallet);
+
+      const dbMapped: DisplayInvestment[] = dbInvestments.map((inv) => {
+        const localMatch = local.find((l) => l.txSignature === inv.txHash);
+        return {
+          id:             inv.id,
+          txSignature:    inv.txHash,
+          investorWallet: wallet,
+          amountUsdc:     inv.amount,
+          timestamp:      inv.createdAt,
+          poolName:       inv.pool.name,
+          poolLocation:   inv.pool.location ?? localMatch?.poolLocation ?? '',
+          poolImageUrl:   inv.pool.imageUrl ?? localMatch?.poolImageUrl ?? '',
+          targetRoi:      inv.pool.roiBase,
+          cycleDays:      inv.pool.cycleDays ?? localMatch?.cycleDays ?? null,
+          poolId:         localMatch?.poolId ?? null,
+        };
+      });
+
+      // Include localStorage-only records (pre-migration investments)
+      const dbTxHashes = new Set(dbMapped.map((i) => i.txSignature));
+      const localOnly: DisplayInvestment[] = local
+        .filter((l) => !dbTxHashes.has(l.txSignature))
+        .map((l) => ({
+          id:             l.txSignature,
+          txSignature:    l.txSignature,
+          investorWallet: wallet,
+          amountUsdc:     l.amountUsdc,
+          timestamp:      l.timestamp,
+          poolName:       l.poolName,
+          poolLocation:   l.poolLocation,
+          poolImageUrl:   l.poolImageUrl,
+          targetRoi:      l.targetRoi,
+          cycleDays:      l.cycleDays,
+          poolId:         l.poolId,
+        }));
+
+      return [...dbMapped, ...localOnly];
     } catch { return []; }
-  }, [publicKey]);
+  }, [publicKey, dbInvestments]);
 
   // Derived summary from real investments
   const totalInvested = investorInvestments.reduce((s, i) => s + i.amountUsdc, 0);

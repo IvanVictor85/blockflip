@@ -62,3 +62,38 @@ export async function createInvestmentAction(data: CreateInvestmentInput) {
     return { success: false as const, error: 'Failed to record investment.' };
   }
 }
+
+export async function getInvestmentsAction(walletAddress: string) {
+  try {
+    const investments = await db.investment.findMany({
+      where: { user: { walletAddress } },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        pool: {
+          select: {
+            poolPda:        true,
+            name:           true,
+            imageUrl:       true,
+            location:       true,
+            cycleDays:      true,
+            targetCapital:  true,
+            roiConservative: true,
+            roiBase:        true,
+            roiOptimistic:  true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true as const,
+      data: investments.map((inv) => ({
+        ...inv,
+        createdAt: inv.createdAt.toISOString(),
+      })),
+    };
+  } catch (error) {
+    console.error('[BlockFlip] Failed to fetch investments from database:', error);
+    return { success: false as const, error: 'Failed to fetch investments from database' };
+  }
+}
