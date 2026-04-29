@@ -339,17 +339,24 @@ export default function SpecialistPage() {
   }, [program, publicKey, deriveSpecialistRegistryPda]);
 
   // Off-chain metadata
-  const [name, setName]             = useState('');
-  const [location, setLocation]     = useState('');
+  const [name, setName]               = useState('');
+  const [location, setLocation]       = useState('');
   const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl]     = useState('');
+  const [imageUrl, setImageUrl]       = useState('');
+
+  // Operation type
+  const [operationType, setOperationType] = useState<'AUCTION' | 'DIRECT_PURCHASE'>('DIRECT_PURCHASE');
+
+  // Cost breakdown — targetCapital is derived, not entered directly
+  const [acquisitionCost, setAcquisitionCost] = useState('');
+  const [renovationCost, setRenovationCost]   = useState('');
+  const [legalCost, setLegalCost]             = useState('');
 
   // On-chain params
-  const [fundingGoal, setFundingGoal]       = useState('');
-  const [maxInvestment, setMaxInvestment]   = useState('');
-  const [cycleDays, setCycleDays]           = useState('');
+  const [maxInvestment, setMaxInvestment]     = useState('');
+  const [cycleDays, setCycleDays]             = useState('120');
   const [targetSalePrice, setTargetSalePrice] = useState('');
-  const [acceptedMint, setAcceptedMint]     = useState('');
+  const [acceptedMint, setAcceptedMint]       = useState('');
 
   // Pre-generated infra (mint + ATA + vault created BEFORE pool, so mints match)
   const [preInfra, setPreInfra]     = useState<PreInfra | null>(null);
@@ -359,13 +366,18 @@ export default function SpecialistPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult]       = useState<PoolResult | null>(null);
 
-  // ─── Derived ROI ────────────────────────────────────────────────────────
-  const goal = parseFloat(fundingGoal) || 0;
-  const sale = parseFloat(targetSalePrice) || 0;
-  const hasROI = goal > 0 && sale > 0;
-  const roiBase        = hasROI ? ((sale - goal) / goal) * 100 : 0;
-  const roiConservador = hasROI ? ((sale * 0.88 - goal) / goal) * 100 : 0;
-  const roiOtimista    = hasROI ? ((sale * 1.10 - goal) / goal) * 100 : 0;
+  // ─── Derived values ──────────────────────────────────────────────────────
+  // targetCapital = sum of cost breakdown (specialist cannot enter it directly)
+  const calculatedTargetCapital =
+    (parseFloat(acquisitionCost) || 0) +
+    (parseFloat(renovationCost)  || 0) +
+    (parseFloat(legalCost)       || 0);
+
+  const sale   = parseFloat(targetSalePrice) || 0;
+  const hasROI = calculatedTargetCapital > 0 && sale > 0;
+  const roiBase        = hasROI ? ((sale - calculatedTargetCapital) / calculatedTargetCapital) * 100 : 0;
+  const roiConservador = hasROI ? ((sale * 0.88 - calculatedTargetCapital) / calculatedTargetCapital) * 100 : 0;
+  const roiOtimista    = hasROI ? ((sale * 1.10 - calculatedTargetCapital) / calculatedTargetCapital) * 100 : 0;
 
   // ─── Generate test infrastructure BEFORE pool creation ──────────────────
   // Creates mint + ATA (5000 tokens) + vault for the NEXT pool PDA.
@@ -404,7 +416,7 @@ export default function SpecialistPage() {
         // Mint enough to cover skin-in-game (5% of funding_goal) + buffer.
         // Use the current form value; default to 10M if not set.
         createMintToInstruction(mintKeypair.publicKey, walletAta, publicKey,
-          Math.max(10_000_000, Math.ceil((parseFloat(fundingGoal) || 0) * 0.06))),
+          Math.max(10_000_000, Math.ceil(calculatedTargetCapital * 0.06))),
       );
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
@@ -437,7 +449,7 @@ export default function SpecialistPage() {
       setPreInfra(infra);
       setAcceptedMint(infra.mint); // auto-fill so pool uses the same mint
 
-      const mintedAmount = Math.max(10_000_000, Math.ceil((parseFloat(fundingGoal) || 0) * 0.06));
+      const mintedAmount = Math.max(10_000_000, Math.ceil(calculatedTargetCapital * 0.06));
       toast.success(t('toastInfraCreated'), {
         id: toastId,
         description: `${mintedAmount.toLocaleString()} tokens → Pool PDA #${nextPoolId}`,
@@ -449,7 +461,7 @@ export default function SpecialistPage() {
     } finally {
       setIsGenInfra(false);
     }
-  }, [publicKey, program, protocolStatePda, connection, sendTransaction, fundingGoal, t]);
+  }, [publicKey, program, protocolStatePda, connection, sendTransaction, calculatedTargetCapital, t]);
 
   // ─── Create pool ─────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -457,13 +469,14 @@ export default function SpecialistPage() {
     if (!connected || !publicKey) {
       toast.error(t('toastWalletNotConnected')); return;
     }
-    const goalNum = parseFloat(fundingGoal);
+    const goalNum = calculatedTargetCapital;
     const maxNum  = parseFloat(maxInvestment);
-    if (!name.trim())                     { toast.error(t('toastNameRequired')); return; }
-    if (isNaN(goalNum) || goalNum <= 0)   { toast.error(t('toastInvalidGoal')); return; }
-    if (isNaN(maxNum) || maxNum <= 0)     { toast.error(t('toastInvalidMax')); return; }
-    if (maxNum > goalNum)                 { toast.error(t('toastMaxExceedsGoal')); return; }
-    if (!acceptedMint.trim())             { toast.error(t('toastMintRequired')); return; }
+    if (!name.trim())                          { toast.error(t('toastNameRequired')); return; }
+    if (!(parseFloat(acquisitionCost) > 0))    { toast.error(t('toastInvalidGoal')); return; }
+    if (goalNum <= 0)                          { toast.error(t('toastInvalidGoal')); return; }
+    if (isNaN(maxNum) || maxNum <= 0)          { toast.error(t('toastInvalidMax')); return; }
+    if (maxNum > goalNum)                      { toast.error(t('toastMaxExceedsGoal')); return; }
+    if (!acceptedMint.trim())                  { toast.error(t('toastMintRequired')); return; }
 
     setIsLoading(true);
     const toastId = toast.loading(t('toastAwaitingSignature'), {
@@ -475,15 +488,16 @@ export default function SpecialistPage() {
         Math.round(goalNum), Math.round(maxNum), acceptedMint.trim()
       );
 
-      // Persist off-chain metadata
+      const validatedImageUrl = isAllowedImageUrl(imageUrl.trim()) ? imageUrl.trim() : '';
+      const cycleInt = parseInt(cycleDays) || 120;
+
+      // Persist off-chain metadata to localStorage (legacy + offline support)
       const metadata = {
         poolId, poolStatePda: poolStatePda.toString(),
         name: name.trim(), location: location.trim(),
         description: description.trim(),
-        // SECURITY FIX (Medium): Only persist image URLs from the allowed whitelist.
-        // Prevents tracking pixels and internal network probing via operator-supplied URLs.
-        imageUrl: isAllowedImageUrl(imageUrl.trim()) ? imageUrl.trim() : '',
-        cycleDays: parseInt(cycleDays) || 120,
+        imageUrl: validatedImageUrl,
+        cycleDays: cycleInt,
         fundingGoal: goalNum, targetSalePrice: parseFloat(targetSalePrice) || 0,
         roi: { conservador: +roiConservador.toFixed(1), base: +roiBase.toFixed(1), otimista: +roiOtimista.toFixed(1) },
         operator: publicKey.toString(), createdAt: new Date().toISOString(), sig,
@@ -496,17 +510,22 @@ export default function SpecialistPage() {
       localStorage.setItem('blockflip_pools', JSON.stringify(existing));
 
       // Persist to Neon (non-blocking — on-chain tx already confirmed)
-      const validatedImageUrl = isAllowedImageUrl(imageUrl.trim()) ? imageUrl.trim() : '';
       createPoolAction({
-        poolPda:         poolStatePda.toString(),
-        mintAddress:     preInfra?.mint ?? acceptedMint.trim(),
-        name:            name.trim(),
-        description:     description.trim(),
-        imageUrl:        validatedImageUrl,
-        targetCapital:   goalNum,
-        roiConservative: +roiConservador.toFixed(1),
-        roiBase:         +roiBase.toFixed(1),
-        roiOptimistic:   +roiOtimista.toFixed(1),
+        poolPda:          poolStatePda.toString(),
+        mintAddress:      preInfra?.mint ?? acceptedMint.trim(),
+        name:             name.trim(),
+        description:      description.trim(),
+        imageUrl:         validatedImageUrl,
+        location:         location.trim(),
+        cycleDays:        cycleInt,
+        operationType,
+        acquisitionCost:  parseFloat(acquisitionCost) || 0,
+        renovationCost:   parseFloat(renovationCost)  || 0,
+        legalCost:        parseFloat(legalCost)        || 0,
+        targetCapital:    goalNum,
+        roiConservative:  +roiConservador.toFixed(1),
+        roiBase:          +roiBase.toFixed(1),
+        roiOptimistic:    +roiOtimista.toFixed(1),
         specialistWallet: publicKey.toString(),
       }).then((res) => {
         if (!res.success) console.error('[BlockFlip] DB save failed:', res.error);
@@ -525,7 +544,8 @@ export default function SpecialistPage() {
   }, [
     connected, publicKey, createPool, preInfra,
     name, location, description, imageUrl,
-    fundingGoal, maxInvestment, cycleDays, targetSalePrice, acceptedMint,
+    operationType, acquisitionCost, renovationCost, legalCost,
+    calculatedTargetCapital, maxInvestment, cycleDays, targetSalePrice, acceptedMint,
     roiBase, roiConservador, roiOtimista, t,
   ]);
 
@@ -650,15 +670,72 @@ export default function SpecialistPage() {
             <SectionHeader step={2} icon={DollarSign} title={t('s2Title')}
               description={t('s2Desc')} />
             <CardContent className="flex flex-col gap-4">
+
+              {/* Operation Type */}
+              <div className="flex gap-2">
+                {(['DIRECT_PURCHASE', 'AUCTION'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setOperationType(type)}
+                    disabled={isLoading}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-colors ${
+                      operationType === type
+                        ? 'bg-[#14F195] text-black border-[#14F195]'
+                        : 'bg-background border-border text-muted-foreground hover:border-[#14F195]/40'
+                    }`}
+                  >
+                    {type === 'DIRECT_PURCHASE' ? '🤝 Compra Direta' : '🔨 Arremate (Leilão)'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Cost Breakdown */}
+              <div className="rounded-xl border border-dashed border-border p-4 flex flex-col gap-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Detalhamento de Custos
+                </p>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <Field id="acquisitionCost"
+                    label={operationType === 'AUCTION' ? 'Teto do Arremate' : 'Valor de Compra'}
+                    hint={operationType === 'AUCTION' ? 'Lance máximo aceitável' : 'Valor negociado com o vendedor'}>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
+                      <Input id="acquisitionCost" type="number" min="1" step="any"
+                        placeholder={operationType === 'AUCTION' ? '230000' : '200000'}
+                        value={acquisitionCost} onChange={(e) => setAcquisitionCost(e.target.value)}
+                        className="pl-7" disabled={isLoading} />
+                    </div>
+                  </Field>
+                  <Field id="renovationCost" label="Reforma (Capex)" hint="Custo estimado de obra">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
+                      <Input id="renovationCost" type="number" min="0" step="any" placeholder="30000"
+                        value={renovationCost} onChange={(e) => setRenovationCost(e.target.value)}
+                        className="pl-7" disabled={isLoading} />
+                    </div>
+                  </Field>
+                  <Field id="legalCost" label="Docs / Taxas" hint="Documentação e custos legais">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
+                      <Input id="legalCost" type="number" min="0" step="any" placeholder="10000"
+                        value={legalCost} onChange={(e) => setLegalCost(e.target.value)}
+                        className="pl-7" disabled={isLoading} />
+                    </div>
+                  </Field>
+                </div>
+                {/* Calculated total */}
+                <div className="flex items-center justify-between pt-1 border-t border-border">
+                  <span className="text-xs text-muted-foreground">Total a captar (calculado)</span>
+                  <span className={`text-sm font-bold tabular-nums ${calculatedTargetCapital > 0 ? 'text-[#14F195]' : 'text-muted-foreground'}`}>
+                    {calculatedTargetCapital > 0
+                      ? `$${calculatedTargetCapital.toLocaleString('en-US')}`
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field id="fundingGoal" label={t('fieldFundingGoal')}>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
-                    <Input id="fundingGoal" type="number" min="1" step="any" placeholder="450000"
-                      value={fundingGoal} onChange={(e) => setFundingGoal(e.target.value)}
-                      className="pl-7" disabled={isLoading} />
-                  </div>
-                </Field>
                 <Field id="maxInvestment" label={t('fieldMaxInvestment')}>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
@@ -667,16 +744,16 @@ export default function SpecialistPage() {
                       className="pl-7" disabled={isLoading} />
                   </div>
                 </Field>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
                 <Field id="targetSalePrice" label={t('fieldTargetSalePrice')}>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
-                    <Input id="targetSalePrice" type="number" min="1" step="any" placeholder="580000"
+                    <Input id="targetSalePrice" type="number" min="1" step="any" placeholder="350000"
                       value={targetSalePrice} onChange={(e) => setTargetSalePrice(e.target.value)}
                       className="pl-7" disabled={isLoading} />
                   </div>
                 </Field>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
                 <Field id="cycleDays" label={t('fieldCycleDays')}>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
