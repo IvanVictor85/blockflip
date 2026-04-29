@@ -94,6 +94,26 @@
       "unknown": "Ocurrió un error inesperado. Por favor, inténtalo de nuevo."
     }
   },
+  "buildCycle": {
+    "badge": "Proof of Build",
+    "title": "Ciclo Completo",
+    "titleAccent": "On-Chain",
+    "description": "Cada etapa del property flipping está registrada y es verificable en la blockchain. Transparencia total desde la adquisición hasta la venta.",
+    "dateLabel": "Fecha prevista",
+    "photoLabel": "Foto / Desc.",
+    "statusInProgress": "En curso",
+    "statusPending": "Pendiente",
+    "statusAwaiting": "En espera",
+    "footerNote": "Todos los hitos se registran mediante smart contracts en Solana — inmutable y auditable por cualquier inversor.",
+    "stages": {
+      "auction": "Subasta",
+      "inspection": "Inspección",
+      "planning": "Planificación",
+      "renovation": "Reforma",
+      "finishing": "Acabado",
+      "sale": "Venta"
+    }
+  },
   "proofOfBuild": {
     "badge": "Prueba de Construcción",
     "progressLabel": "Progreso de la Obra",

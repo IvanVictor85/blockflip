@@ -94,6 +94,26 @@
       "unknown": "Ocorreu um erro inesperado. Por favor, tente novamente."
     }
   },
+  "buildCycle": {
+    "badge": "Proof of Build",
+    "title": "Ciclo Completo",
+    "titleAccent": "On-Chain",
+    "description": "Cada etapa do property flipping é registrada e verificável na blockchain. Transparência total do arremate à venda.",
+    "dateLabel": "Data prevista",
+    "photoLabel": "Foto / Desc.",
+    "statusInProgress": "Em andamento",
+    "statusPending": "Pendente",
+    "statusAwaiting": "Aguardando",
+    "footerNote": "Todas as etapas são registradas via smart contracts na Solana — imutável e auditável por qualquer investidor.",
+    "stages": {
+      "auction": "Arremate",
+      "inspection": "Vistoria",
+      "planning": "Projeto",
+      "renovation": "Reforma",
+      "finishing": "Acabamento",
+      "sale": "Venda"
+    }
+  },
   "proofOfBuild": {
     "badge": "Proof of Build",
     "progressLabel": "Progresso da Obra",
