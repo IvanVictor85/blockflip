@@ -91,6 +91,17 @@ model Pool {
   specialistId String
   specialist   User         @relation("SpecialistPools", fields: [specialistId], references: [id])
   investments  Investment[]
+  images       PoolImage[]
+}
+
+model PoolImage {
+  id        String   @id @default(uuid())
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id], onDelete: Cascade)
 }
 
 model Investment {

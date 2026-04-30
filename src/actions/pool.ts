@@ -5,6 +5,33 @@ import { Role, OperationType } from '@/generated/prisma/enums';
 import { revalidatePath } from 'next/cache';
 import { isAllowedImageUrl } from '@/lib/security';
 
+// ─── Image management ─────────────────────────────────────────────────────────
+
+export async function addPoolImagesAction(poolPda: string, imageUrls: string[]) {
+  const validUrls = imageUrls.filter((u) => isAllowedImageUrl(u));
+  if (validUrls.length === 0) return { success: false, error: 'No valid image URLs' };
+
+  try {
+    const pool = await db.pool.findUnique({ where: { poolPda } });
+    if (!pool) return { success: false, error: 'Pool not found' };
+
+    await db.poolImage.createMany({
+      data: validUrls.map((url, i) => ({ url, order: i, poolId: pool.id })),
+    });
+
+    // Set primary imageUrl if pool doesn't have one yet
+    if (!pool.imageUrl) {
+      await db.pool.update({ where: { poolPda }, data: { imageUrl: validUrls[0] } });
+    }
+
+    revalidatePath('/', 'layout');
+    return { success: true };
+  } catch (error) {
+    console.error('[BlockFlip] Failed to save pool images:', error);
+    return { success: false, error: 'Failed to save images' };
+  }
+}
+
 export interface CreatePoolInput {
   poolPda: string;
   mintAddress: string;
@@ -76,9 +103,8 @@ export async function getPoolsAction() {
     const pools = await db.pool.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        specialist: {
-          select: { walletAddress: true },
-        },
+        specialist: { select: { walletAddress: true } },
+        images: { orderBy: { order: 'asc' }, select: { url: true } },
       },
     });
 
@@ -86,6 +112,7 @@ export async function getPoolsAction() {
       success: true as const,
       data: pools.map((p) => ({
         ...p,
+        imageUrls: p.images.map((img) => img.url),
         createdAt: p.createdAt.toISOString(),
         updatedAt: p.updatedAt.toISOString(),
       })),

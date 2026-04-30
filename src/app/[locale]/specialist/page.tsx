@@ -19,7 +19,7 @@ import dynamic from 'next/dynamic';
 import {
   Building2, DollarSign, Calendar, TrendingUp,
   Wallet, Loader2, CheckCircle2, ExternalLink,
-  AlertCircle, ArrowRight, ShieldCheck, Lock, Unlock, Zap,
+  AlertCircle, ArrowRight, ShieldCheck, Lock, Unlock, Zap, Images,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,8 +28,9 @@ import { Badge } from '@/components/ui/badge';
 import { useBlockFlip } from '@/hooks/useBlockFlip';
 import { POOL_SEED, PROGRAM_ID } from '@/anchor/setup';
 import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
-import { isAllowedImageUrl } from '@/lib/security';
-import { createPoolAction } from '@/actions/pool';
+import { createPoolAction, addPoolImagesAction } from '@/actions/pool';
+import { uploadMultiple } from '@/lib/cloudinary';
+import { ImageUploader } from '@/components/image-uploader';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((m) => m.WalletMultiButton),
@@ -320,29 +321,73 @@ export default function SpecialistPage() {
   const router = useRouter();
   const { connection } = useConnection();
   const { connected, publicKey, sendTransaction } = useWallet();
-  const { createPool, depositSkinInGame, program, protocolStatePda, deriveSpecialistRegistryPda } = useBlockFlip();
+  const { createPool, depositSkinInGame, authorizeSpecialist, program, protocolStatePda, deriveSpecialistRegistryPda } = useBlockFlip();
 
-  // SECURITY FIX (Critical): Verify on-chain authorization before rendering any
-  // specialist functionality. Without this check, any connected wallet could trigger
-  // handleGenerateTestInfra, spending real SOL before the contract rejects create_pool.
+  // SECURITY: Verify on-chain authorization before rendering specialist functionality.
   // null = checking | true = authorized | false = unauthorized
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [isAuthorized, setIsAuthorized]   = useState<boolean | null>(null);
+  const [isAuthority, setIsAuthority]     = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [rpcDown, setRpcDown]             = useState(false);
 
   useEffect(() => {
-    if (!program || !publicKey) { setIsAuthorized(null); return; }
+    if (!program || !publicKey) { setIsAuthorized(null); setIsAuthority(false); return; }
+
     const registryPda = deriveSpecialistRegistryPda(publicKey);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (program.account as any).specialistRegistry
-      .fetch(registryPda)
-      .then(() => setIsAuthorized(true))
-      .catch(() => setIsAuthorized(false));
-  }, [program, publicKey, deriveSpecialistRegistryPda]);
+    const accountApi = program.account as any;
+    const walletStr  = publicKey.toBase58();
+
+    // Distinguish network failure from "account not found"
+    const isNetworkErr = (e: unknown) =>
+      e instanceof TypeError && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'));
+
+    Promise.all([
+      accountApi.specialistRegistry.fetch(registryPda)
+        .then(() => 'registered' as const)
+        .catch((e: unknown) => isNetworkErr(e) ? 'rpc_down' as const : 'not_found' as const),
+
+      accountApi.protocolState.fetch(protocolStatePda)
+        .then((s: { authority: { toBase58: () => string } }) => s.authority.toBase58() === walletStr)
+        .catch((e: unknown) => { console.warn('[BlockFlip] protocolState fetch failed:', e); return 'rpc_down' as const; }),
+    ]).then(([registryResult, authorityResult]) => {
+      const networkDown = registryResult === 'rpc_down' || authorityResult === 'rpc_down';
+
+      if (networkDown) {
+        // RPC unreachable — can't verify on-chain. Allow access with a warning.
+        // The contract will still reject unauthorized wallets on tx submission.
+        setRpcDown(true);
+        setIsAuthorized(true);
+        setIsAuthority(false);
+        return;
+      }
+
+      setRpcDown(false);
+      setIsAuthorized(registryResult === 'registered');
+      setIsAuthority(authorityResult === true);
+    });
+  }, [program, publicKey, deriveSpecialistRegistryPda, protocolStatePda]);
+
+  const handleSelfAuthorize = async () => {
+    if (!publicKey) return;
+    setIsRegistering(true);
+    try {
+      await authorizeSpecialist(publicKey.toBase58());
+      setIsAuthorized(true);
+      toast.success('Carteira autorizada como Especialista!');
+    } catch (err) {
+      toast.error('Falha na autorização', { description: (err as Error).message?.slice(0, 120) });
+    } finally {
+      setIsRegistering(false);
+    }
+  };
 
   // Off-chain metadata
   const [name, setName]               = useState('');
   const [location, setLocation]       = useState('');
   const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl]       = useState('');
+  const [imageFiles, setImageFiles]   = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Operation type
   const [operationType, setOperationType] = useState<'AUCTION' | 'DIRECT_PURCHASE'>('DIRECT_PURCHASE');
@@ -413,10 +458,11 @@ export default function SpecialistPage() {
         createAssociatedTokenAccountIdempotentInstruction(publicKey, walletAta, publicKey, mintKeypair.publicKey),
         SystemProgram.createAccount({ fromPubkey: publicKey, newAccountPubkey: vaultKeypair.publicKey, lamports: accountRent, space: ACCOUNT_SIZE, programId: TOKEN_PROGRAM_ID }),
         createInitializeAccount3Instruction(vaultKeypair.publicKey, mintKeypair.publicKey, poolStatePda),
-        // Mint enough to cover skin-in-game (5% of funding_goal) + buffer.
-        // Use the current form value; default to 10M if not set.
+        // Mint the full token supply = funding goal (1 token = 1 USDC).
+        // Operator holds 100%; deposits ≥5% as skin-in-game, sells the rest to investors.
+        // Falls back to a small amount if the form isn't filled yet.
         createMintToInstruction(mintKeypair.publicKey, walletAta, publicKey,
-          Math.max(10_000_000, Math.ceil(calculatedTargetCapital * 0.06))),
+          calculatedTargetCapital > 0 ? Math.ceil(calculatedTargetCapital) : 10_000),
       );
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
@@ -449,11 +495,12 @@ export default function SpecialistPage() {
       setPreInfra(infra);
       setAcceptedMint(infra.mint); // auto-fill so pool uses the same mint
 
-      const mintedAmount = Math.max(10_000_000, Math.ceil(calculatedTargetCapital * 0.06));
+      const mintedAmount = calculatedTargetCapital > 0 ? Math.ceil(calculatedTargetCapital) : 10_000;
+      const sigTokens    = Math.round(mintedAmount * 0.05);
       toast.success(t('toastInfraCreated'), {
         id: toastId,
-        description: `${mintedAmount.toLocaleString()} tokens → Pool PDA #${nextPoolId}`,
-        duration: 8_000,
+        description: `Pool #${nextPoolId} · Supply: ${mintedAmount.toLocaleString('pt-BR')} tokens · 1 token = 1 USDC · SiG mínimo: ${sigTokens.toLocaleString('pt-BR')} tokens (5%)`,
+        duration: 10_000,
       });
     } catch (err: unknown) {
       const msg = (err as Error)?.message ?? '';
@@ -479,6 +526,28 @@ export default function SpecialistPage() {
     if (!acceptedMint.trim())                  { toast.error(t('toastMintRequired')); return; }
 
     setIsLoading(true);
+
+    // ── Step 0: Upload images to Cloudinary (before the on-chain tx) ──────────
+    let uploadedUrls: string[] = [];
+    if (imageFiles.length > 0) {
+      const uploadToastId = toast.loading(`Enviando ${imageFiles.length} foto(s)…`);
+      try {
+        uploadedUrls = await uploadMultiple(imageFiles, (done, total) => {
+          setUploadProgress({ done, total });
+        });
+        toast.dismiss(uploadToastId);
+        setUploadProgress(null);
+      } catch (uploadErr) {
+        toast.error('Falha no upload das fotos', {
+          id: uploadToastId,
+          description: (uploadErr as Error).message,
+        });
+        setIsLoading(false);
+        setUploadProgress(null);
+        return;
+      }
+    }
+
     const toastId = toast.loading(t('toastAwaitingSignature'), {
       description: 'Phantom · Backpack · Solflare',
     });
@@ -488,7 +557,7 @@ export default function SpecialistPage() {
         Math.round(goalNum), Math.round(maxNum), acceptedMint.trim()
       );
 
-      const validatedImageUrl = isAllowedImageUrl(imageUrl.trim()) ? imageUrl.trim() : '';
+      const primaryImageUrl = uploadedUrls[0] ?? '';
       const cycleInt = parseInt(cycleDays) || 120;
 
       // Persist off-chain metadata to localStorage (legacy + offline support)
@@ -496,7 +565,8 @@ export default function SpecialistPage() {
         poolId, poolStatePda: poolStatePda.toString(),
         name: name.trim(), location: location.trim(),
         description: description.trim(),
-        imageUrl: validatedImageUrl,
+        imageUrl: primaryImageUrl,
+        imageUrls: uploadedUrls,
         cycleDays: cycleInt,
         operationType,
         acquisitionCost: parseFloat(acquisitionCost) || 0,
@@ -514,12 +584,13 @@ export default function SpecialistPage() {
       localStorage.setItem('blockflip_pools', JSON.stringify(existing));
 
       // Persist to Neon (non-blocking — on-chain tx already confirmed)
+      const poolPdaStr = poolStatePda.toString();
       createPoolAction({
-        poolPda:          poolStatePda.toString(),
+        poolPda:          poolPdaStr,
         mintAddress:      preInfra?.mint ?? acceptedMint.trim(),
         name:             name.trim(),
         description:      description.trim(),
-        imageUrl:         validatedImageUrl,
+        imageUrl:         primaryImageUrl,
         location:         location.trim(),
         cycleDays:        cycleInt,
         operationType,
@@ -532,7 +603,13 @@ export default function SpecialistPage() {
         roiOptimistic:    +roiOtimista.toFixed(1),
         specialistWallet: publicKey.toString(),
       }).then((res) => {
-        if (!res.success) console.error('[BlockFlip] DB save failed:', res.error);
+        if (!res.success) { console.error('[BlockFlip] DB save failed:', res.error); return; }
+        // Save all images to PoolImage table after pool is created in DB
+        if (uploadedUrls.length > 0) {
+          addPoolImagesAction(poolPdaStr, uploadedUrls).then((imgRes) => {
+            if (!imgRes.success) console.error('[BlockFlip] Image save failed:', imgRes.error);
+          });
+        }
       });
 
       toast.dismiss(toastId);
@@ -547,7 +624,7 @@ export default function SpecialistPage() {
     }
   }, [
     connected, publicKey, createPool, preInfra,
-    name, location, description, imageUrl,
+    name, location, description, imageFiles, uploadProgress,
     operationType, acquisitionCost, renovationCost, legalCost,
     calculatedTargetCapital, maxInvestment, cycleDays, targetSalePrice, acceptedMint,
     roiBase, roiConservador, roiOtimista, t,
@@ -581,7 +658,42 @@ export default function SpecialistPage() {
       </main>
     );
   }
-  if (connected && isAuthorized === false) return <UnauthorizedGate />;
+  if (connected && isAuthorized === false) {
+    // Protocol authority can self-authorize with one click
+    if (isAuthority) {
+      return (
+        <main className="min-h-screen bg-background flex items-center justify-center pt-16">
+          <div className="max-w-sm w-full mx-auto px-4 text-center flex flex-col items-center gap-6">
+            <div className="h-20 w-20 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+              <Unlock className="h-9 w-9 text-amber-500" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-amber-400">Autorização Pendente</h1>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                Você é a <span className="text-amber-400 font-medium">authority</span> do protocolo.
+                Sua carteira ainda não foi registrada como Especialista on-chain.
+                Clique para se auto-autorizar.
+              </p>
+            </div>
+            <Button
+              onClick={handleSelfAuthorize}
+              disabled={isRegistering}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold"
+            >
+              {isRegistering
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Assinando…</>
+                : <><ShieldCheck className="h-4 w-4 mr-2" />Registrar como Especialista</>
+              }
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Carteira: {publicKey?.toBase58().slice(0, 8)}…{publicKey?.toBase58().slice(-8)}
+            </p>
+          </div>
+        </main>
+      );
+    }
+    return <UnauthorizedGate />;
+  }
 
   // ─── Render success flow ─────────────────────────────────────────────────
   if (result) {
@@ -638,6 +750,18 @@ export default function SpecialistPage() {
           </div>
         )}
 
+        {/* RPC offline banner */}
+        {rpcDown && (
+          <div className="mb-2 flex items-start gap-3 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+            <AlertCircle className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-orange-300 leading-relaxed">
+              <span className="font-semibold">Devnet inacessível</span> — verificação de autorização ignorada.
+              Transações on-chain também podem falhar até o RPC voltar.
+              Tente mudar o RPC em <span className="font-mono">NEXT_PUBLIC_SOLANA_RPC_URL</span> para um endpoint mais estável (ex: Helius, QuickNode).
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
           {/* Seção 1: O Ativo */}
@@ -662,10 +786,19 @@ export default function SpecialistPage() {
                   disabled={isLoading}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 resize-none" />
               </Field>
-              <Field id="imageUrl" label={t('fieldImageUrl')}>
-                <Input id="imageUrl" type="url" placeholder="https://images.unsplash.com/photo-..."
-                  value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} disabled={isLoading} />
-              </Field>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <Images className="h-4 w-4 text-[#14F195]" />
+                  Fotos do Imóvel
+                  <span className="text-xs text-muted-foreground font-normal">(opcional · até 8 fotos)</span>
+                </label>
+                <ImageUploader
+                  onChange={setImageFiles}
+                  uploading={isLoading && uploadProgress !== null}
+                  uploadProgress={uploadProgress}
+                  disabled={isLoading}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -820,6 +953,16 @@ export default function SpecialistPage() {
                     onChange={(e) => setAcceptedMint(e.target.value)}
                     disabled={isLoading} className="font-mono text-xs" />
                 </Field>
+
+                {/* Token ratio explanation */}
+                {preInfra && calculatedTargetCapital > 0 && (
+                  <div className="rounded-lg bg-muted/50 border border-border px-3 py-2 text-xs text-muted-foreground space-y-0.5">
+                    <p className="font-medium text-foreground">Modelo de tokens:</p>
+                    <p>Supply total: <span className="font-mono text-foreground">{calculatedTargetCapital.toLocaleString('pt-BR')} tokens</span> = meta de captação em USDC</p>
+                    <p>Ratio: <span className="font-mono text-foreground">1 token = 1 USDC</span></p>
+                    <p>SiG mínimo (5%): <span className="font-mono text-foreground">{Math.round(calculatedTargetCapital * 0.05).toLocaleString('pt-BR')} tokens</span> depositados em carteira</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

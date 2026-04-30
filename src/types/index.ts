@@ -25,6 +25,7 @@ export interface Asset {
   title: string;
   location: string;
   imageUrl: string;
+  imageUrls?: string[]; // All images (Cloudinary). imageUrl = first image for backward compat.
   status: AssetStatus;
   acquisitionPrice: number;
   targetSalePrice: number;

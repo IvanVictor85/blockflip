@@ -9,6 +9,7 @@ import { ProofOfBuild } from '@/components/proof-of-build';
 import { PropertyDocuments } from '@/components/property-documents';
 import { mockAssets } from '@/data/mock-assets';
 import { Asset, AssetStatus } from '@/types';
+import { getPoolsAction } from '@/actions/pool';
 
 // ─── LocalStorage pool shape ──────────────────────────────────────────────────
 
@@ -33,6 +34,8 @@ interface StoredPool {
   vault?: string | null;
   acceptedMint?: string | null;
   operatorAta?: string | null;
+  sigDepositTx?: string | null;
+  imageUrls?: string[];
 }
 
 const DEFAULT_PROPERTY_IMG =
@@ -50,13 +53,15 @@ function storedPoolToAsset(p: StoredPool): Asset {
     imageUrl: p.imageUrl || DEFAULT_PROPERTY_IMG,
     // Pools in Funding state → arremate (first stage: acquired, raising capital)
     status: 'arremate' as AssetStatus,
-    acquisitionPrice: Math.round(p.fundingGoal * 0.65),
+    acquisitionPrice: p.acquisitionCost ?? Math.round(p.fundingGoal * 0.65),
     targetSalePrice: p.targetSalePrice || Math.round(p.fundingGoal * 1.3),
     estimatedROI: p.roi.base,
     cycleDays: p.cycleDays,
     currentDay: daysSinceCreation,
     fundingGoal: p.fundingGoal,
-    fundingRaised: 0, // updated after invest calls; 0 at creation
+    // If SiG was deposited, operator put in ≥5% of fundingGoal on-chain
+    fundingRaised: p.sigDepositTx ? Math.round(p.fundingGoal * 0.05) : 0,
+    imageUrls: p.imageUrls ?? (p.imageUrl ? [p.imageUrl] : []),
     fundingCurrency: 'USDC',
     milestones: [],
     tokenSymbol: `BFLP-${String(p.poolId).padStart(3, '0')}`,
@@ -82,14 +87,85 @@ function storedPoolToAsset(p: StoredPool): Asset {
 // ─── Read localStorage → Asset[] (pure function, called once on mount) ────────
 
 function readRealPools(): Asset[] {
+  // Parse pools — if this fails, nothing to show
+  let stored: StoredPool[];
   try {
-    const stored: StoredPool[] = JSON.parse(
-      localStorage.getItem('blockflip_pools') ?? '[]'
-    );
-    return stored.map(storedPoolToAsset);
+    stored = JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]');
   } catch {
     return [];
   }
+
+  // Parse investments — isolated try so a failure here doesn't wipe pools
+  const raisedByPool = new Map<number, number>();
+  try {
+    const investments: { poolId: number; amountUsdc: number }[] = JSON.parse(
+      localStorage.getItem('blockflip_investments') ?? '[]'
+    );
+    for (const inv of investments) {
+      if (typeof inv.poolId === 'number' && typeof inv.amountUsdc === 'number') {
+        raisedByPool.set(inv.poolId, (raisedByPool.get(inv.poolId) ?? 0) + inv.amountUsdc);
+      }
+    }
+  } catch { /* non-fatal — pools still render without investor totals */ }
+
+  return stored.map((p) => {
+    try {
+      const asset = storedPoolToAsset(p);
+      const investorRaised = raisedByPool.get(p.poolId) ?? 0;
+      const sigRaised = p.sigDepositTx ? Math.round(p.fundingGoal * 0.05) : 0;
+      return { ...asset, fundingRaised: sigRaised + investorRaised };
+    } catch {
+      return storedPoolToAsset(p); // fallback: render without updated fundingRaised
+    }
+  });
+}
+
+// ─── DB pool → Asset ──────────────────────────────────────────────────────────
+
+type DbPool = Extract<Awaited<ReturnType<typeof getPoolsAction>>, { success: true }>['data'][number];
+
+function dbPoolToAsset(p: DbPool, local: StoredPool | undefined, investorRaised: number): Asset {
+  const daysSinceCreation = Math.floor(
+    (Date.now() - new Date(p.createdAt).getTime()) / 86_400_000
+  );
+  const sigRaised = local?.sigDepositTx ? Math.round(p.targetCapital * 0.05) : 0;
+  const images = p.imageUrls && p.imageUrls.length > 0
+    ? p.imageUrls
+    : local?.imageUrl ? [local.imageUrl] : [];
+
+  return {
+    id: `pool-db-${p.poolPda}`,
+    title: p.name,
+    location: p.location ?? local?.location ?? '',
+    imageUrl: images[0] ?? DEFAULT_PROPERTY_IMG,
+    imageUrls: images,
+    status: 'arremate' as AssetStatus,
+    acquisitionPrice: p.acquisitionCost ?? Math.round(p.targetCapital * 0.65),
+    targetSalePrice: local?.targetSalePrice ?? Math.round(p.targetCapital * 1.3),
+    estimatedROI: p.roiBase,
+    cycleDays: p.cycleDays ?? local?.cycleDays ?? 120,
+    currentDay: daysSinceCreation,
+    fundingGoal: p.targetCapital,
+    fundingRaised: p.raisedCapital > 0 ? p.raisedCapital : sigRaised + investorRaised,
+    fundingCurrency: 'USDC',
+    milestones: [],
+    tokenSymbol: `BFLP-${p.poolPda.slice(0, 4).toUpperCase()}`,
+    totalTokens: p.targetCapital,
+    minInvestment: 100,
+    smartContractAddress: p.poolPda,
+    speAddress: p.poolPda,
+    verificationStatus: 'pending',
+    documents: [],
+    operationType: p.operationType === 'AUCTION' ? 'AUCTION' : 'DIRECT_PURCHASE',
+    acquisitionCost: p.acquisitionCost ?? undefined,
+    renovationCost: p.renovationCost ?? undefined,
+    legalCost: p.legalCost ?? undefined,
+    // On-chain wiring from localStorage
+    poolId: local?.poolId,
+    poolVault: local?.vault ?? undefined,
+    acceptedMint: local?.acceptedMint ?? undefined,
+    investorAta: local?.operatorAta ?? undefined,
+  };
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -103,10 +179,50 @@ export function AssetMarketplace() {
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [activeTab, setActiveTab] = useState<'proof' | 'documents'>('proof');
-  // Start with [] on both server and client to avoid hydration mismatch,
-  // then populate from localStorage after mount (client-only).
   const [realAssets, setRealAssets] = useState<Asset[]>([]);
-  useEffect(() => { setRealAssets(readRealPools()); }, []);
+
+  useEffect(() => {
+    // Build investment totals from localStorage
+    const raisedByPool = new Map<number, number>();
+    try {
+      const investments: { poolId: number; amountUsdc: number }[] = JSON.parse(
+        localStorage.getItem('blockflip_investments') ?? '[]'
+      );
+      for (const inv of investments) {
+        if (typeof inv.poolId === 'number' && typeof inv.amountUsdc === 'number') {
+          raisedByPool.set(inv.poolId, (raisedByPool.get(inv.poolId) ?? 0) + inv.amountUsdc);
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    // Index localStorage pools by poolPda for supplemental fields
+    const localByPda = new Map<string, StoredPool>();
+    try {
+      const stored: StoredPool[] = JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]');
+      for (const p of stored) localByPda.set(p.poolStatePda, p);
+    } catch { /* non-fatal */ }
+
+    // Fetch from DB — authoritative source
+    getPoolsAction().then((res) => {
+      if (!res.success) {
+        // DB unavailable: fall back to localStorage-only pools
+        setRealAssets(readRealPools());
+        return;
+      }
+      const dbAssets = res.data.map((p) => {
+        const local = localByPda.get(p.poolPda);
+        const investorRaised = local?.poolId != null ? (raisedByPool.get(local.poolId) ?? 0) : 0;
+        return dbPoolToAsset(p, local, investorRaised);
+      });
+      // Merge: DB pools by pda, then any localStorage-only pools not yet in DB
+      const dbPdas = new Set(res.data.map((p) => p.poolPda));
+      const localOnly = readRealPools().filter((a) => {
+        const pda = a.smartContractAddress ?? '';
+        return !dbPdas.has(pda);
+      });
+      setRealAssets([...dbAssets, ...localOnly]);
+    });
+  }, []);
 
   // Real pools first, then mocks — deduplicate by id
   const allAssets: Asset[] = [

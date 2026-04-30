@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Calendar, ExternalLink } from 'lucide-react';
+import { MapPin, Calendar, ExternalLink, Gavel, Handshake, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +42,20 @@ export function AssetCard({ asset, onSelect }: AssetCardProps) {
   const tStatus = useTranslations('status');
   const tNames = useTranslations('assetNames');
   const [investOpen, setInvestOpen] = useState(false);
+  const [imgIndex, setImgIndex] = useState(0);
+
+  const images = asset.imageUrls && asset.imageUrls.length > 0
+    ? asset.imageUrls
+    : [asset.imageUrl || 'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=800&q=80'];
+
+  const prevImg = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImgIndex((i) => (i - 1 + images.length) % images.length);
+  };
+  const nextImg = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImgIndex((i) => (i + 1) % images.length);
+  };
 
   const nameKey = ASSET_NAME_KEY[asset.id];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,17 +84,47 @@ export function AssetCard({ asset, onSelect }: AssetCardProps) {
       <div className="relative h-44 overflow-hidden bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=800&q=80"
-          alt={displayTitle}
-          className="absolute inset-0 w-full h-full object-cover"
+          src={images[imgIndex]}
+          alt={`${displayTitle} ${imgIndex + 1}`}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
         />
 
+        {/* Carousel controls — only when multiple images */}
+        {images.length > 1 && (
+          <>
+            <button onClick={prevImg} className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors z-10">
+              <ChevronLeft className="h-4 w-4 text-white" />
+            </button>
+            <button onClick={nextImg} className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors z-10">
+              <ChevronRight className="h-4 w-4 text-white" />
+            </button>
+            {/* Dot indicators */}
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); setImgIndex(i); }}
+                  className={`h-1.5 rounded-full transition-all ${i === imgIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/50'}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Status badge — bottom-left overlay */}
-        <div className="absolute bottom-3 left-3">
+        <div className="absolute bottom-3 left-3 flex gap-1.5">
           <Badge className={`${isFundingClosed ? 'bg-gray-700/80 text-gray-400 border-gray-600' : `${status.bgColor} ${status.color}`} border font-medium backdrop-blur-sm`}>
             <div className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse" />
-            {isFundingClosed ? 'Captação Encerrada' : tStatus(asset.status)}
+            {isFundingClosed ? t('fundingClosed') : tStatus(asset.status)}
           </Badge>
+          {asset.poolId !== undefined && (
+            <Badge className="bg-black/60 text-white border-white/20 backdrop-blur-sm font-medium text-[10px]">
+              {asset.operationType === 'AUCTION'
+                ? <><Gavel className="w-2.5 h-2.5 mr-1" />{t('opTypeAuction')}</>
+                : <><Handshake className="w-2.5 h-2.5 mr-1" />{t('opTypeDirect')}</>
+              }
+            </Badge>
+          )}
         </div>
 
         {/* ROI — top-right, prominent */}
@@ -119,12 +163,12 @@ export function AssetCard({ asset, onSelect }: AssetCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Financial Snapshot */}
+        {/* Financial Snapshot — totals only; breakdown visible in detail view */}
         <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-secondary/50">
           <div>
-            <span className="text-xs text-muted-foreground block mb-0.5">{t('acquisition')}</span>
-            <span className="font-semibold text-sm">{formatCurrency(asset.acquisitionPrice)}</span>
-            <span className="text-[10px] text-muted-foreground/60 block">{formatBRL(asset.acquisitionPrice)}</span>
+            <span className="text-xs text-muted-foreground block mb-0.5">{t('totalInvestment')}</span>
+            <span className="font-semibold text-sm">{formatCurrency(asset.fundingGoal)}</span>
+            <span className="text-[10px] text-muted-foreground/60 block">{formatBRL(asset.fundingGoal)}</span>
           </div>
           <div>
             <span className="text-xs text-muted-foreground block mb-0.5">{t('targetSale')}</span>

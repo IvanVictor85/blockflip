@@ -157,6 +157,19 @@ export function useInvestment(
       } catch (err: unknown) {
         toast.dismiss(toastId);
         const msg = (err as Error)?.message ?? '';
+
+        // "already processed" = tx landed on-chain on a previous attempt — treat as success
+        if (msg.includes('already been processed')) {
+          const match = msg.match(/[1-9A-HJ-NP-Za-km-z]{87,88}/);
+          const recoveredSig = match ? match[0] : '';
+          transition('success', { txSignature: recoveredSig });
+          toast.info('Transação já processada', {
+            description: 'Aporte confirmado on-chain em tentativa anterior.',
+            duration: 6_000,
+          });
+          return;
+        }
+
         const isRejected = msg.toLowerCase().includes('reject') || msg.toLowerCase().includes('cancel');
         const errType: InvestmentErrorType = isRejected ? 'user_rejected' : 'rpc_error';
         setError(errType, msg);

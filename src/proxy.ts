@@ -37,14 +37,17 @@ export function proxy(request: NextRequest) {
       // https: covers fonts.gstatic.com, fonts.googleapis.com and any CDN
       // the wallet adapter's DM Sans @import may resolve from (avoids whack-a-mole)
       "font-src 'self' data: https:",
-      // Solana RPCs (http + wss), Phantom, Solflare, Backpack, Vercel Analytics
+      // Solana RPCs (http + wss), wallets, Cloudinary uploads, Vercel Analytics
       "connect-src 'self'" +
         " https://api.mainnet-beta.solana.com wss://api.mainnet-beta.solana.com" +
         " https://api.devnet.solana.com wss://api.devnet.solana.com" +
+        " https://rpc.ankr.com" +
         " https://explorer.solana.com" +
         " https://phantom.app https://api.phantom.app https://cdn.phantom.app" +
         " https://solflare.com https://api.solflare.com" +
         " https://api.backpack.exchange" +
+        " https://api.cloudinary.com" +
+        " https://res.cloudinary.com" +
         " https://vitals.vercel-insights.com https://*.vercel-insights.com" +
         " chrome-extension: moz-extension:",
       // manifest-src: explicit to avoid default-src 'self' blocking the absolute URL

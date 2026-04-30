@@ -415,7 +415,7 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
       persistSigDeposit(pool.poolStatePda, sig || 'recovered');
       toast.success(t('sigToastSuccess'), {
         id: toastId,
-        description: t('sigToastSuccessDesc', { poolId: pool.poolId }),
+        description: t('sigToastSuccessDesc', { poolId: pool.poolId ?? '?' }),
         ...(sig ? { action: { label: 'Explorer', onClick: () => openExternalUrl(getExplorerTxUrl(sig)) } } : {}),
         duration: 8_000,
       });
@@ -458,8 +458,16 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
       }
     : null;
 
-  const skinPct = pool.skinInGame > 0
-    ? ((pool.skinInGame / pool.fundingGoal) * 100).toFixed(1)
+  // DB skinInGame lags until an on-chain webhook updates it.
+  // If the operator already deposited (sigDepositTx present), derive 5% from fundingGoal.
+  const effectiveSkinInGame = pool.skinInGame > 0
+    ? pool.skinInGame
+    : pool.sigDepositTx
+      ? Math.round(pool.fundingGoal * 0.05)
+      : 0;
+
+  const skinPct = effectiveSkinInGame > 0
+    ? ((effectiveSkinInGame / pool.fundingGoal) * 100).toFixed(1)
     : null;
 
   const totalCost = (pool.acquisitionCost ?? 0) + (pool.renovationCost ?? 0) + (pool.legalCost ?? 0);
@@ -539,7 +547,7 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
               </p>
               {skinPct ? (
                 <div className="mt-0.5">
-                  <p className="font-semibold text-[#14F195]">{usd(pool.skinInGame)}</p>
+                  <p className="font-semibold text-[#14F195]">{usd(effectiveSkinInGame)}</p>
                   <p className="text-[10px] text-[#14F195]/70">{skinPct}{t('skinInGamePct')}</p>
                 </div>
               ) : (
@@ -627,6 +635,8 @@ export default function DashboardPage() {
   type DbPool = Extract<Awaited<ReturnType<typeof getPoolsAction>>, { success: true }>['data'][number];
   // DB pools fetched asynchronously
   const [dbPools, setDbPools] = useState<DbPool[]>([]);
+  // Bumped after persistSigDeposit so the memo re-reads localStorage immediately
+  const [localVersion, setLocalVersion] = useState(0);
 
   useEffect(() => {
     if (!publicKey) return;
@@ -683,7 +693,7 @@ export default function DashboardPage() {
 
       return [...dbMapped, ...localOnly];
     } catch { return []; }
-  }, [publicKey, dbPools]);
+  }, [publicKey, dbPools, localVersion]);
 
   // DB investments fetched asynchronously
   type DbInvestment = Extract<Awaited<ReturnType<typeof getInvestmentsAction>>, { success: true }>['data'][number];
@@ -896,7 +906,9 @@ export default function DashboardPage() {
                   key={pool.key}
                   pool={pool}
                   onSigDeposited={() => {
-                    // Re-fetch DB pools to pick up updated skinInGame
+                    // Force memo to re-read localStorage (sigDepositTx now set)
+                    setLocalVersion((v) => v + 1);
+                    // Also re-fetch DB pools in case skinInGame was updated
                     if (!publicKey) return;
                     getPoolsAction().then((res) => {
                       if (res.success) setDbPools(res.data.filter((p) => p.specialist.walletAddress === publicKey.toBase58()));

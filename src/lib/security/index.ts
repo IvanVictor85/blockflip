@@ -80,6 +80,16 @@ const ALLOWED_IMAGE_DOMAINS = [
   'ibb.co',
   'postimg.cc',
   'i.postimg.cc',
+  // Cloudinary CDN (our primary upload host)
+  'res.cloudinary.com',
+  // Real estate portals
+  'static.fotocasa.es',
+  'img3.idealista.com',
+  'img4.idealista.com',
+  'static.olx.com.br',
+  'images.vivareal.com',
+  'resizedimgs.vivareal.com',
+  'img.zapimoveis.com.br',
 ];
 
 export function isAllowedImageUrl(url: string): boolean {

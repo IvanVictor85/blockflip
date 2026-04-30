@@ -33,6 +33,9 @@
   },
   "assetCard": {
     "acquisition": "Adquisición",
+    "reform": "Reforma",
+    "legal": "Legal/Docs",
+    "totalInvestment": "Inversión Total",
     "targetSale": "Venta Objetivo",
     "funding": "Captación",
     "funded": "captado",
@@ -44,7 +47,9 @@
     "fundingClosed": "Captación Cerrada",
     "verifiedTooltip": "Activo verificado y custodiado en una SPE (Sociedad de Propósito Específico) reflejada on-chain. Documentos auditados y disponibles para consulta.",
     "pendingTooltip": "Verificación en curso. Documentos en proceso de auditoría.",
-    "unverifiedTooltip": "En espera de verificación."
+    "unverifiedTooltip": "En espera de verificación.",
+    "opTypeAuction": "Subasta",
+    "opTypeDirect": "Compra Directa"
   },
   "status": {
     "arremate": "Subasta",
@@ -125,6 +130,8 @@
     "financialSummary": "Resumen Financiero",
     "acquisitionCost": "Costo de Adquisición",
     "reformCost": "Renovación",
+    "legalCost": "Legal / Documentación",
+    "totalInvestment": "Inversión Total",
     "targetSale": "Venta Objetivo",
     "projectedROI": "ROI Proyectado",
     "cycleLabel": "Ciclo",

@@ -33,6 +33,9 @@
   },
   "assetCard": {
     "acquisition": "Acquisition",
+    "reform": "Renovation",
+    "legal": "Legal/Docs",
+    "totalInvestment": "Total Investment",
     "targetSale": "Target Sale",
     "funding": "Funding",
     "funded": "funded",
@@ -44,7 +47,9 @@
     "fundingClosed": "Funding Closed",
     "verifiedTooltip": "Asset verified and held in an SPE (Special Purpose Entity) mirrored on-chain. Documents audited and available for review.",
     "pendingTooltip": "Verification in progress. Documents under audit review.",
-    "unverifiedTooltip": "Awaiting verification."
+    "unverifiedTooltip": "Awaiting verification.",
+    "opTypeAuction": "Auction",
+    "opTypeDirect": "Direct Purchase"
   },
   "status": {
     "arremate": "Auction",
@@ -125,6 +130,8 @@
     "financialSummary": "Financial Summary",
     "acquisitionCost": "Acquisition Cost",
     "reformCost": "Renovation",
+    "legalCost": "Legal / Documentation",
+    "totalInvestment": "Total Investment",
     "targetSale": "Target Sale",
     "projectedROI": "Projected ROI",
     "cycleLabel": "Cycle",
