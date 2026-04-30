@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -103,12 +103,10 @@ export function AssetMarketplace() {
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [activeTab, setActiveTab] = useState<'proof' | 'documents'>('proof');
-  // Lazy initializer runs once on the client (window is undefined on server → []).
-  // No useEffect needed — avoids the react-hooks/set-state-in-effect lint rule
-  // and prevents the useSyncExternalStore infinite-loop.
-  const [realAssets] = useState<Asset[]>(() =>
-    typeof window === 'undefined' ? [] : readRealPools()
-  );
+  // Start with [] on both server and client to avoid hydration mismatch,
+  // then populate from localStorage after mount (client-only).
+  const [realAssets, setRealAssets] = useState<Asset[]>([]);
+  useEffect(() => { setRealAssets(readRealPools()); }, []);
 
   // Real pools first, then mocks — deduplicate by id
   const allAssets: Asset[] = [
