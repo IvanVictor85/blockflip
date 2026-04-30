@@ -21,9 +21,12 @@ import {
   ShieldCheck,
   Gavel,
   Handshake,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getExplorerTxUrl, openExternalUrl } from '@/lib/solana';
 import { isAllowedImageUrl } from '@/lib/security';
+import { useBlockFlip } from '@/hooks/useBlockFlip';
 import { getPoolsAction } from '@/actions/pool';
 import { getInvestmentsAction } from '@/actions/investment';
 
@@ -82,6 +85,8 @@ interface OperatorPool {
   operator: string;
   createdAt: string;
   sig?: string;
+  vault?: string | null;
+  operatorAta?: string | null;
 }
 
 // ─── Unified display type (DB + localStorage merged) ─────────────────────────
@@ -104,6 +109,8 @@ interface DisplayPool {
   operator: string;
   createdAt: string;
   sig?: string;
+  vault?: string;       // pool token vault — needed for SiG deposit
+  operatorAta?: string; // operator's ATA for the accepted mint
 }
 
 // ─── Read localStorage once on mount ─────────────────────────────────────────
@@ -129,6 +136,8 @@ function localToDisplay(p: OperatorPool): DisplayPool {
     operator: p.operator,
     createdAt: p.createdAt,
     sig: p.sig,
+    vault: p.vault ?? undefined,
+    operatorAta: p.operatorAta ?? undefined,
   };
 }
 
@@ -378,10 +387,35 @@ const poolStatusConfig = {
   completed: { labelKey: 'statusCompleted', color: 'bg-[#14F195]/10 text-emerald-700 dark:text-[#14F195] border-[#14F195]/20' },
 } as const;
 
-function OperatorPoolCard({ pool }: { pool: DisplayPool }) {
+function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDeposited?: () => void }) {
   const t = useTranslations('dashboard');
   const [imgError, setImgError] = useState(false);
-  const statusKey: keyof typeof poolStatusConfig = 'funding';
+  const [isDepositing, setIsDepositing] = useState(false);
+  const { depositSkinInGame } = useBlockFlip();
+
+  const handleDepositSig = async () => {
+    if (!pool.poolId || !pool.operatorAta || !pool.vault) return;
+    setIsDepositing(true);
+    const toastId = toast.loading('Assinando depósito de garantia…');
+    try {
+      const sig = await depositSkinInGame(pool.poolId, pool.operatorAta, pool.vault);
+      toast.success('Pool ativada! Aberta para investidores.', {
+        id: toastId,
+        description: `Pool #${pool.poolId} → Funding`,
+        action: { label: 'Explorer', onClick: () => openExternalUrl(getExplorerTxUrl(sig)) },
+        duration: 8_000,
+      });
+      onSigDeposited?.();
+    } catch (err: unknown) {
+      const msg = (err as Error)?.message ?? '';
+      toast.error('Falha no depósito', { id: toastId, description: msg.slice(0, 120) });
+    } finally {
+      setIsDepositing(false);
+    }
+  };
+
+  const needsSig = pool.skinInGame === 0 && Boolean(pool.poolId) && Boolean(pool.vault) && Boolean(pool.operatorAta);
+  const statusKey: keyof typeof poolStatusConfig = needsSig ? 'pending' : 'funding';
   const cfg = poolStatusConfig[statusKey];
   const createdDate = new Date(pool.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -513,6 +547,30 @@ function OperatorPoolCard({ pool }: { pool: DisplayPool }) {
             </div>
           )}
 
+          {/* SiG deposit CTA — shown when pool is Pending and infra is available */}
+          {needsSig && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 flex items-center justify-between gap-3">
+              <div className="flex items-start gap-2 min-w-0">
+                <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Depósito de Garantia pendente</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Deposite ≥5% do capital para ativar a pool e abrir para investidores.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleDepositSig}
+                disabled={isDepositing}
+                className="shrink-0 flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-black font-semibold text-xs px-3 py-2 transition-colors"
+              >
+                {isDepositing
+                  ? <><Loader2 className="h-3 w-3 animate-spin" /> Assinando…</>
+                  : <><ShieldCheck className="h-3 w-3" /> Depositar Garantia</>}
+              </button>
+            </div>
+          )}
+
           {/* PDA + explorer link */}
           <div className="flex items-center gap-3 pt-1 border-t border-border">
             <span className="text-[10px] font-mono text-muted-foreground truncate flex-1">
@@ -587,6 +645,8 @@ export default function DashboardPage() {
           operator: p.specialist.walletAddress ?? wallet,
           createdAt: p.createdAt,
           sig: local?.sig,
+          vault: local?.vault,
+          operatorAta: local?.operatorAta,
         };
       });
 
@@ -805,7 +865,17 @@ export default function DashboardPage() {
             </div>
             <div className="flex flex-col gap-4">
               {operatorPools.map((pool) => (
-                <OperatorPoolCard key={pool.poolId} pool={pool} />
+                <OperatorPoolCard
+                  key={pool.key}
+                  pool={pool}
+                  onSigDeposited={() => {
+                    // Re-fetch DB pools to pick up updated skinInGame
+                    if (!publicKey) return;
+                    getPoolsAction().then((res) => {
+                      if (res.success) setDbPools(res.data.filter((p) => p.specialist.walletAddress === publicKey.toBase58()));
+                    });
+                  }}
+                />
               ))}
             </div>
           </section>

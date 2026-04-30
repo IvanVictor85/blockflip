@@ -65,6 +65,21 @@ const ALLOWED_IMAGE_DOMAINS = [
   'nftstorage.link',
   'arweave.net',
   'cloudflare-ipfs.com',
+  // Common image hosts used in demos and real estate listings
+  'i.imgur.com',
+  'imgur.com',
+  'cdn.pixabay.com',
+  'images.pexels.com',
+  'lh3.googleusercontent.com',
+  'drive.google.com',
+  'raw.githubusercontent.com',
+  'user-images.githubusercontent.com',
+  'cdn.discordapp.com',
+  'media.discordapp.net',
+  'i.ibb.co',         // imgbb — popular free host
+  'ibb.co',
+  'postimg.cc',
+  'i.postimg.cc',
 ];
 
 export function isAllowedImageUrl(url: string): boolean {
