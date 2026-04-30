@@ -396,19 +396,19 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
   const handleDepositSig = async () => {
     if (!pool.poolId || !pool.operatorAta || !pool.vault) return;
     setIsDepositing(true);
-    const toastId = toast.loading('Assinando depósito de garantia…');
+    const toastId = toast.loading(t('sigToastLoading'));
     try {
       const sig = await depositSkinInGame(pool.poolId, pool.operatorAta, pool.vault);
-      toast.success('Pool ativada! Aberta para investidores.', {
+      toast.success(t('sigToastSuccess'), {
         id: toastId,
-        description: `Pool #${pool.poolId} → Funding`,
+        description: t('sigToastSuccessDesc', { poolId: pool.poolId }),
         action: { label: 'Explorer', onClick: () => openExternalUrl(getExplorerTxUrl(sig)) },
         duration: 8_000,
       });
       onSigDeposited?.();
     } catch (err: unknown) {
       const msg = (err as Error)?.message ?? '';
-      toast.error('Falha no depósito', { id: toastId, description: msg.slice(0, 120) });
+      toast.error(t('sigDepositTitle'), { id: toastId, description: msg.slice(0, 120) });
     } finally {
       setIsDepositing(false);
     }
@@ -422,7 +422,7 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
   const isAuction = pool.operationType === 'AUCTION';
   const opBadge = pool.operationType
     ? {
-        label: isAuction ? 'Arremate' : 'Compra Direta',
+        label: isAuction ? t('opTypeAuction') : t('opTypeDirect'),
         Icon: isAuction ? Gavel : Handshake,
         cls: isAuction
           ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
@@ -507,12 +507,12 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
             <div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <ShieldCheck className="h-3 w-3 text-[#14F195]" />
-                Skin-in-Game
+                {t('skinInGame')}
               </p>
               {skinPct ? (
                 <div className="mt-0.5">
                   <p className="font-semibold text-[#14F195]">{usd(pool.skinInGame)}</p>
-                  <p className="text-[10px] text-[#14F195]/70">{skinPct}% do total</p>
+                  <p className="text-[10px] text-[#14F195]/70">{skinPct}{t('skinInGamePct')}</p>
                 </div>
               ) : (
                 <p className="font-semibold mt-0.5 text-muted-foreground/50">—</p>
@@ -523,23 +523,23 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
           {/* Cost breakdown (only when DB has the data) */}
           {totalCost > 0 && (
             <div className="pt-1 border-t border-border space-y-1.5">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Estrutura de Custo</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('costBreakdown')}</p>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 {(pool.acquisitionCost ?? 0) > 0 && (
                   <div className="rounded-lg bg-muted/50 p-2">
-                    <p className="text-[10px] text-muted-foreground">{isAuction ? 'Arremate' : 'Aquisição'}</p>
+                    <p className="text-[10px] text-muted-foreground">{isAuction ? t('costAuction') : t('costAcquisition')}</p>
                     <p className="font-semibold mt-0.5 tabular-nums">{usd(pool.acquisitionCost!)}</p>
                   </div>
                 )}
                 {(pool.renovationCost ?? 0) > 0 && (
                   <div className="rounded-lg bg-muted/50 p-2">
-                    <p className="text-[10px] text-muted-foreground">Reforma</p>
+                    <p className="text-[10px] text-muted-foreground">{t('costRenovation')}</p>
                     <p className="font-semibold mt-0.5 tabular-nums">{usd(pool.renovationCost!)}</p>
                   </div>
                 )}
                 {(pool.legalCost ?? 0) > 0 && (
                   <div className="rounded-lg bg-muted/50 p-2">
-                    <p className="text-[10px] text-muted-foreground">Documentação</p>
+                    <p className="text-[10px] text-muted-foreground">{t('costLegal')}</p>
                     <p className="font-semibold mt-0.5 tabular-nums">{usd(pool.legalCost!)}</p>
                   </div>
                 )}
@@ -553,10 +553,8 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
               <div className="flex items-start gap-2 min-w-0">
                 <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Depósito de Garantia pendente</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Deposite ≥5% do capital para ativar a pool e abrir para investidores.
-                  </p>
+                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">{t('sigDepositTitle')}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{t('sigDepositDesc')}</p>
                 </div>
               </div>
               <button
@@ -565,8 +563,8 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
                 className="shrink-0 flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-black font-semibold text-xs px-3 py-2 transition-colors"
               >
                 {isDepositing
-                  ? <><Loader2 className="h-3 w-3 animate-spin" /> Assinando…</>
-                  : <><ShieldCheck className="h-3 w-3" /> Depositar Garantia</>}
+                  ? <><Loader2 className="h-3 w-3 animate-spin" /> {t('sigDepositSigning')}</>
+                  : <><ShieldCheck className="h-3 w-3" /> {t('sigDepositBtn')}</>}
               </button>
             </div>
           )}

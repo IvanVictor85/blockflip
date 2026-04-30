@@ -126,7 +126,11 @@
     "acquisitionCost": "Costo de Adquisición",
     "reformCost": "Renovación",
     "targetSale": "Venta Objetivo",
-    "projectedROI": "ROI Proyectado"
+    "projectedROI": "ROI Proyectado",
+    "cycleLabel": "Ciclo",
+    "tokenLabel": "Token",
+    "supplyLabel": "Supply",
+    "minLabel": "Mín."
   },
   "documents": {
     "title": "Documentos del Inmueble",
@@ -311,7 +315,23 @@
     "txTypeWithdrawal": "Retiro",
     "investedLabel": "Invertido",
     "roiTargetLabel": "ROI Objetivo",
-    "txDescription": "Inversión en {poolName}"
+    "txDescription": "Inversión en {poolName}",
+    "sigDepositTitle": "Depósito de Garantía pendiente",
+    "sigDepositDesc": "Deposite ≥5% del capital para activar el pool y abrirlo a inversores.",
+    "sigDepositBtn": "Depositar Garantía",
+    "sigDepositSigning": "Firmando...",
+    "sigToastLoading": "Firmando depósito de garantía…",
+    "sigToastSuccess": "¡Pool activado! Abierto a inversores.",
+    "sigToastSuccessDesc": "Pool #{poolId} → Funding",
+    "skinInGame": "Skin-in-Game",
+    "skinInGamePct": "% del total",
+    "costBreakdown": "Estructura de Costos",
+    "costAcquisition": "Adquisición",
+    "costAuction": "Precio Subasta",
+    "costRenovation": "Reforma",
+    "costLegal": "Documentación",
+    "opTypeAuction": "Subasta",
+    "opTypeDirect": "Compra Directa"
   },
   "errors": {
     "somethingWentWrong": "Algo salió mal",

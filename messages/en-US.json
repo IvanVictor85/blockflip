@@ -126,7 +126,11 @@
     "acquisitionCost": "Acquisition Cost",
     "reformCost": "Renovation",
     "targetSale": "Target Sale",
-    "projectedROI": "Projected ROI"
+    "projectedROI": "Projected ROI",
+    "cycleLabel": "Cycle",
+    "tokenLabel": "Token",
+    "supplyLabel": "Supply",
+    "minLabel": "Min."
   },
   "documents": {
     "title": "Property Documents",
@@ -311,7 +315,23 @@
     "txTypeWithdrawal": "Withdrawal",
     "investedLabel": "Invested",
     "roiTargetLabel": "Target ROI",
-    "txDescription": "Investment in {poolName}"
+    "txDescription": "Investment in {poolName}",
+    "sigDepositTitle": "Guarantee Deposit pending",
+    "sigDepositDesc": "Deposit ≥5% of capital to activate the pool and open it to investors.",
+    "sigDepositBtn": "Deposit Guarantee",
+    "sigDepositSigning": "Signing...",
+    "sigToastLoading": "Signing guarantee deposit…",
+    "sigToastSuccess": "Pool activated! Open to investors.",
+    "sigToastSuccessDesc": "Pool #{poolId} → Funding",
+    "skinInGame": "Skin-in-Game",
+    "skinInGamePct": "% of total",
+    "costBreakdown": "Cost Breakdown",
+    "costAcquisition": "Acquisition",
+    "costAuction": "Auction Cap",
+    "costRenovation": "Renovation",
+    "costLegal": "Legal Docs",
+    "opTypeAuction": "Auction",
+    "opTypeDirect": "Direct Purchase"
   },
   "errors": {
     "somethingWentWrong": "Something went wrong",

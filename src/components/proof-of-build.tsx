@@ -51,7 +51,7 @@ export function ProofOfBuild({ asset }: ProofOfBuildProps) {
           </div>
         </div>
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
-          <span className="text-sm text-muted-foreground block mb-1">Ciclo</span>
+          <span className="text-sm text-muted-foreground block mb-1">{t('cycleLabel')}</span>
           <div className="flex items-end gap-2">
             <span className="text-2xl font-bold">{asset.currentDay}</span>
             <span className="text-sm text-muted-foreground mb-1">/ {asset.cycleDays}d</span>
@@ -105,15 +105,15 @@ export function ProofOfBuild({ asset }: ProofOfBuildProps) {
       <div className="mt-8 p-4 rounded-xl bg-[#14F195]/5 border border-[#14F195]/20">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <span className="text-sm text-muted-foreground block mb-1">Token</span>
+            <span className="text-sm text-muted-foreground block mb-1">{t('tokenLabel')}</span>
             <span className="font-mono font-bold text-[#14F195]">{asset.tokenSymbol}</span>
           </div>
           <div>
-            <span className="text-sm text-muted-foreground block mb-1">Supply</span>
+            <span className="text-sm text-muted-foreground block mb-1">{t('supplyLabel')}</span>
             <span className="font-semibold">{asset.totalTokens.toLocaleString()}</span>
           </div>
           <div>
-            <span className="text-sm text-muted-foreground block mb-1">Min.</span>
+            <span className="text-sm text-muted-foreground block mb-1">{t('minLabel')}</span>
             <span className="font-semibold">{formatCurrency(asset.minInvestment)}</span>
           </div>
         </div>
