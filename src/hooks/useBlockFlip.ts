@@ -174,16 +174,25 @@ export function useBlockFlip() {
         PROGRAM_ID
       );
 
-      const sig = await program.methods
-        .depositSkinInGame()
-        .accounts({
-          poolState: poolStatePda,
-          investorPosition: investorPositionPda,
-          operatorTokenAccount: new PublicKey(operatorTokenAccountStr),
-          poolVault: new PublicKey(poolVaultStr),
-          operator: wallet.publicKey,
-        })
-        .rpc({ commitment: 'confirmed' });
+      let sig: string;
+      try {
+        sig = await program.methods
+          .depositSkinInGame()
+          .accounts({
+            poolState: poolStatePda,
+            investorPosition: investorPositionPda,
+            operatorTokenAccount: new PublicKey(operatorTokenAccountStr),
+            poolVault: new PublicKey(poolVaultStr),
+            operator: wallet.publicKey,
+          })
+          .rpc({ commitment: 'confirmed' });
+      } catch (err: unknown) {
+        const msg = (err as Error)?.message ?? '';
+        // TX landed but confirmation timed out — treat as success
+        if (!msg.includes('already been processed')) throw err;
+        const match = msg.match(/[1-9A-HJ-NP-Za-km-z]{87,88}/);
+        sig = match ? match[0] : '';
+      }
 
       return sig;
     },
