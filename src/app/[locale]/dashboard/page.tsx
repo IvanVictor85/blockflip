@@ -650,6 +650,7 @@ export default function DashboardPage() {
   // Merge DB + localStorage: DB is canonical, localStorage supplements missing fields.
   // Dedup by poolPda so pools saved to both sources appear only once.
   const operatorPools = useMemo<DisplayPool[]>(() => {
+    void localVersion; // intentional: bumping this forces localStorage re-read after SiG deposit
     if (!publicKey || typeof window === 'undefined') return [];
     try {
       const wallet = publicKey.toBase58();

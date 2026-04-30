@@ -624,7 +624,7 @@ export default function SpecialistPage() {
     }
   }, [
     connected, publicKey, createPool, preInfra,
-    name, location, description, imageFiles, uploadProgress,
+    name, location, description, imageFiles,
     operationType, acquisitionCost, renovationCost, legalCost,
     calculatedTargetCapital, maxInvestment, cycleDays, targetSalePrice, acceptedMint,
     roiBase, roiConservador, roiOtimista, t,
