@@ -85,6 +85,7 @@ interface OperatorPool {
   operator: string;
   createdAt: string;
   sig?: string;
+  sigDepositTx?: string | null; // set after skin-in-game deposit confirmed
   vault?: string | null;
   operatorAta?: string | null;
 }
@@ -109,8 +110,9 @@ interface DisplayPool {
   operator: string;
   createdAt: string;
   sig?: string;
-  vault?: string;       // pool token vault — needed for SiG deposit
-  operatorAta?: string; // operator's ATA for the accepted mint
+  sigDepositTx?: string; // set after skin-in-game deposit confirmed
+  vault?: string;        // pool token vault — needed for SiG deposit
+  operatorAta?: string;  // operator's ATA for the accepted mint
 }
 
 // ─── Read localStorage once on mount ─────────────────────────────────────────
@@ -118,6 +120,16 @@ interface DisplayPool {
 function readAllPools(): OperatorPool[] {
   try { return JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]'); }
   catch { return []; }
+}
+
+function persistSigDeposit(poolStatePda: string, depositSig: string): void {
+  try {
+    const pools: OperatorPool[] = JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]');
+    const updated = pools.map((p) =>
+      p.poolStatePda === poolStatePda ? { ...p, sigDepositTx: depositSig } : p
+    );
+    localStorage.setItem('blockflip_pools', JSON.stringify(updated));
+  } catch { /* non-fatal */ }
 }
 
 function localToDisplay(p: OperatorPool): DisplayPool {
@@ -138,6 +150,7 @@ function localToDisplay(p: OperatorPool): DisplayPool {
     sig: p.sig,
     vault: p.vault ?? undefined,
     operatorAta: p.operatorAta ?? undefined,
+    sigDepositTx: p.sigDepositTx ?? undefined,
   };
 }
 
@@ -397,24 +410,39 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
     if (!pool.poolId || !pool.operatorAta || !pool.vault) return;
     setIsDepositing(true);
     const toastId = toast.loading(t('sigToastLoading'));
-    try {
-      const sig = await depositSkinInGame(pool.poolId, pool.operatorAta, pool.vault);
+
+    const handleSuccess = (sig: string) => {
+      persistSigDeposit(pool.poolStatePda, sig || 'recovered');
       toast.success(t('sigToastSuccess'), {
         id: toastId,
         description: t('sigToastSuccessDesc', { poolId: pool.poolId }),
-        action: { label: 'Explorer', onClick: () => openExternalUrl(getExplorerTxUrl(sig)) },
+        ...(sig ? { action: { label: 'Explorer', onClick: () => openExternalUrl(getExplorerTxUrl(sig)) } } : {}),
         duration: 8_000,
       });
       onSigDeposited?.();
+    };
+
+    try {
+      const sig = await depositSkinInGame(pool.poolId, pool.operatorAta, pool.vault);
+      handleSuccess(sig);
     } catch (err: unknown) {
       const msg = (err as Error)?.message ?? '';
+      // 0x0 = System Program AccountAlreadyInUse — investorPosition PDA already
+      // exists, meaning a previous SiG deposit was confirmed. Treat as success.
+      if (msg.includes('custom program error: 0x0') || msg.includes('already been processed')) {
+        const match = msg.match(/[1-9A-HJ-NP-Za-km-z]{87,88}/);
+        handleSuccess(match ? match[0] : '');
+        return;
+      }
       toast.error(t('sigDepositTitle'), { id: toastId, description: msg.slice(0, 120) });
     } finally {
       setIsDepositing(false);
     }
   };
 
-  const needsSig = pool.skinInGame === 0 && Boolean(pool.poolId) && Boolean(pool.vault) && Boolean(pool.operatorAta);
+  // Hide button once SiG is confirmed (either via DB skinInGame or localStorage sigDepositTx)
+  const needsSig = !pool.sigDepositTx && pool.skinInGame === 0
+    && Boolean(pool.poolId) && Boolean(pool.vault) && Boolean(pool.operatorAta);
   const statusKey: keyof typeof poolStatusConfig = needsSig ? 'pending' : 'funding';
   const cfg = poolStatusConfig[statusKey];
   const createdDate = new Date(pool.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
@@ -643,6 +671,7 @@ export default function DashboardPage() {
           operator: p.specialist.walletAddress ?? wallet,
           createdAt: p.createdAt,
           sig: local?.sig,
+          sigDepositTx: local?.sigDepositTx,
           vault: local?.vault,
           operatorAta: local?.operatorAta,
         };
