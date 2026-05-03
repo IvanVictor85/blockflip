@@ -74,6 +74,31 @@ export function Hero() {
             </div>
           </div>
 
+          {/* Trust strip */}
+          <div className="mt-12 pt-8 border-t border-border/50">
+            <p className="text-xs text-muted-foreground mb-4 uppercase tracking-wider text-center">
+              {t('trustLabel')}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-[#14F195] rounded-full" />
+                {t('trustOnchain')}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-[#14F195] rounded-full" />
+                {t('trustSPE')}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-[#14F195] rounded-full" />
+                {t('trustOpenSource')}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-[#14F195] rounded-full" />
+                {t('trustSolana')}
+              </span>
+            </div>
+          </div>
+
         </div>
       </div>
     </section>

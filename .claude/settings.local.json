@@ -4,7 +4,9 @@
       "Bash(mkdir:*)",
       "Bash(curl -I http://localhost:3000/icon)",
       "Bash(curl:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

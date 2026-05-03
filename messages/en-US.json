@@ -17,7 +17,12 @@
     "statRoi": "ROI per Cycle",
     "statCycle": "Average Cycle",
     "statCycleValue": "<6 months",
-    "statTransparency": "On-chain Transparency"
+    "statTransparency": "On-chain Transparency",
+    "trustLabel": "Protocol Guarantees",
+    "trustOnchain": "Open-source smart contracts",
+    "trustSPE": "Audited SPE custody",
+    "trustOpenSource": "On-chain skin-in-the-game",
+    "trustSolana": "Auditable on Solscan"
   },
   "marketplace": {
     "badge": "Marketplace",
@@ -339,6 +344,19 @@
     "costLegal": "Legal Docs",
     "opTypeAuction": "Auction",
     "opTypeDirect": "Direct Purchase"
+  },
+  "skinInTheGame": {
+    "badge": "Skin in the Game",
+    "title": "The operator puts their capital in first.",
+    "description": "Before the pool accepts the first USDC from investors, the operator deposits 5% of the funding goal into a PDA. Incentives are aligned from block zero.",
+    "card1Title": "Locked on-chain",
+    "card1Description": "5% from the operator stays locked in the Pool Vault. Cannot be withdrawn until the sales cycle.",
+    "card2Title": "Mandatory state",
+    "card2Description": "The Anchor program transitions from Pending → Funding ONLY after the deposit. Without it, the pool doesn't accept capital.",
+    "card3Title": "Publicly auditable",
+    "card3Description": "Every deposit has a verifiable signature on Solscan. Radical transparency.",
+    "split": "Typical capital split per pool",
+    "splitNote": "Operator receives their share of profit proportional to 5%. Investors receive proportional to 95%."
   },
   "errors": {
     "somethingWentWrong": "Something went wrong",
