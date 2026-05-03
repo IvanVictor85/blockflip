@@ -126,19 +126,37 @@ export function Footer() {
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <button onClick={() => openModal('Docs')} className="hover:text-foreground transition-colors">{t('docs')}</button>
             <button onClick={() => openModal('Whitepaper')} className="hover:text-foreground transition-colors">{t('whitepaper')}</button>
-            <button onClick={() => openModal('FAQ')} className="hover:text-foreground transition-colors">{t('faq')}</button>
+            <a href="#faq" className="hover:text-foreground transition-colors">{t('faq')}</a>
             <button onClick={() => openModal('Contato')} className="hover:text-foreground transition-colors">{t('contact')}</button>
           </div>
 
           {/* Social */}
           <div className="flex items-center gap-4">
-            <a href="#" className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+            <a
+              href="https://x.com/blockflip_io"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="X (Twitter)"
+              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            >
               <XIcon className="w-5 h-5" />
             </a>
-            <a href="#" className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+            <a
+              href="https://discord.gg/blockflip"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Discord"
+              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            >
               <MessageCircle className="w-5 h-5" />
             </a>
-            <a href="#" className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+            <a
+              href="https://github.com/blockflip-protocol"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="GitHub"
+              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            >
               <GitHubIcon className="w-5 h-5" />
             </a>
           </div>
@@ -152,6 +170,19 @@ export function Footer() {
             <SolanaLogo className="h-5 w-auto" />
             <span className="font-semibold">Solana</span>
           </div>
+        </div>
+
+        {/* Program ID */}
+        <div className="mt-4 text-center text-xs text-muted-foreground">
+          <span>Program ID: </span>
+          <a
+            href="https://solscan.io/account/8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T?cluster=devnet"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono hover:text-[#14F195] transition-colors"
+          >
+            8HJ9...AE5T
+          </a>
         </div>
       </div>
 

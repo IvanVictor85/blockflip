@@ -358,6 +358,32 @@
     "split": "Typical capital split per pool",
     "splitNote": "Operator receives their share of profit proportional to 5%. Investors receive proportional to 95%."
   },
+  "faq": {
+    "badge": "Frequently Asked Questions",
+    "title": "Everything you need to know",
+    "q": {
+      "receive": {
+        "q": "How do I receive my returns?",
+        "a": "In USDC, automatically, when the property is sold. The smart contract distributes proportionally to token holders without manual intervention."
+      },
+      "risk": {
+        "q": "What if construction delays or the property doesn't sell?",
+        "a": "The operator put 5% of their own capital locked in the pool from the start (skin-in-the-game). If there's a loss, they lose first. Investors only lose after the operator's 5% has been completely consumed."
+      },
+      "crypto": {
+        "q": "Do I need to understand crypto?",
+        "a": "No. You can login with Google and the platform creates your wallet automatically. You only need USDC to invest — you can buy it via bank transfer on some exchanges."
+      },
+      "documents": {
+        "q": "Are the properties real? Can I see the deed?",
+        "a": "Yes. Each pool has public documents: property deed, appraisal report, before/after photos, and renovation timeline. Everything linked directly from the marketplace."
+      },
+      "fees": {
+        "q": "What are the fees?",
+        "a": "1% on the investment (protocol fee, deducted at purchase) + Solana gas (a few cents per transaction). No hidden fees, no performance fee on exit."
+      }
+    }
+  },
   "errors": {
     "somethingWentWrong": "Something went wrong",
     "safeMessage": "An unexpected error occurred. Your investments and data are safe. Try reloading the page.",

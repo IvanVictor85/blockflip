@@ -358,6 +358,32 @@
     "split": "División típica de capital por pool",
     "splitNote": "El operador recibe su parte del beneficio proporcional al 5%. Los inversores reciben proporcional al 95%."
   },
+  "faq": {
+    "badge": "Preguntas Frecuentes",
+    "title": "Todo lo que necesitas saber",
+    "q": {
+      "receive": {
+        "q": "¿Cómo recibo mis retornos?",
+        "a": "En USDC, automáticamente, cuando se vende el inmueble. El smart contract distribuye proporcionalmente a los token holders sin intervención manual."
+      },
+      "risk": {
+        "q": "¿Qué pasa si la obra se retrasa o el inmueble no se vende?",
+        "a": "El operador puso el 5% de su propio capital bloqueado en el pool desde el inicio (skin-in-the-game). Si hay pérdidas, él pierde primero. Los inversores solo pierden después de que el 5% del operador haya sido completamente consumido."
+      },
+      "crypto": {
+        "q": "¿Necesito entender de cripto?",
+        "a": "No. Puedes iniciar sesión con Google y la plataforma crea tu wallet automáticamente. Solo necesitas USDC para invertir — puedes comprarlo mediante transferencia bancaria en algunos exchanges."
+      },
+      "documents": {
+        "q": "¿Los inmuebles son reales? ¿Puedo ver la escritura?",
+        "a": "Sí. Cada pool tiene documentos públicos: escritura, informe de tasación, fotos antes/después y cronograma de reforma. Todo enlazado directamente desde el marketplace."
+      },
+      "fees": {
+        "q": "¿Cuáles son las comisiones?",
+        "a": "1% sobre la inversión (comisión del protocolo, descontada en la compra) + gas de Solana (unos centavos por transacción). Sin comisiones ocultas, sin comisión de rendimiento al salir."
+      }
+    }
+  },
   "errors": {
     "somethingWentWrong": "Algo salió mal",
     "safeMessage": "Ocurrió un error inesperado. Tus inversiones y datos están seguros. Intenta recargar la página.",
