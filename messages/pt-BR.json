@@ -18,6 +18,7 @@
     "statCycle": "Ciclo Médio",
     "statCycleValue": "<6 meses",
     "statTransparency": "Transparência On-chain",
+    "statTVL": "TVL do Protocolo",
     "trustLabel": "Garantias do protocolo",
     "trustOnchain": "Smart contracts open-source",
     "trustSPE": "Custódia em SPE auditada",

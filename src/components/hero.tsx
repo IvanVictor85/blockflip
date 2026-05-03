@@ -1,15 +1,17 @@
 'use client';
 
-import { ArrowRight, TrendingUp, Shield, Clock } from 'lucide-react';
+import { ArrowRight, TrendingUp, Activity, Clock } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { defaultLocale } from '@/i18n/config';
+import { useProtocolStats } from '@/hooks/use-protocol-stats';
 
 export function Hero() {
   const t = useTranslations('hero');
   const locale = useLocale();
   const specialistHref = locale === defaultLocale ? '/specialist' : `/${locale}/specialist`;
+  const { tvl, loading } = useProtocolStats();
 
   return (
     <section className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
@@ -68,9 +70,11 @@ export function Hero() {
               <span className="text-sm text-muted-foreground">{t('statCycle')}</span>
             </div>
             <div className="flex flex-col items-center p-6 rounded-2xl bg-card border border-border">
-              <Shield className="w-8 h-8 text-[#14F195] mb-3" />
-              <span className="text-3xl font-bold mb-1">100%</span>
-              <span className="text-sm text-muted-foreground">{t('statTransparency')}</span>
+              <Activity className="w-8 h-8 text-[#14F195] mb-3" />
+              <span className="text-3xl font-bold mb-1">
+                {loading ? '—' : `$${(tvl / 1000).toFixed(0)}K`}
+              </span>
+              <span className="text-sm text-muted-foreground">{t('statTVL')}</span>
             </div>
           </div>
 
