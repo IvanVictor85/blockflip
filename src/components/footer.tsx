@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { MessageCircle, X, Send, CheckCircle2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/brand/logo';
 
 function XIcon({ className }: { className?: string }) {
   return (
@@ -119,14 +119,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
           <div className="flex items-center justify-center">
-            <Image
-              src="/logo-blockflip.png"
-              alt="BlockFlip"
-              width={350}
-              height={100}
-              unoptimized
-              className="h-28 w-auto object-contain"
-            />
+            <Logo variant="horizontal" height={48} />
           </div>
 
           {/* Links */}

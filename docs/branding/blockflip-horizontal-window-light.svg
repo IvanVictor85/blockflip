@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" width="420" height="140">
+  <title>BlockFlip horizontal lockup with window — light mode</title>
+  <g transform="translate(60, 70)" stroke="#0D0E10" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="-40,-10 0,10 40,-10 40,30 0,50 -40,30" fill="none"/>
+    <line x1="0" y1="10" x2="0" y2="50"/>
+    <polygon points="-40,-10 0,-40 40,-10 0,10" fill="#0D0E10"/>
+    <polygon points="-27.5,8.75 -12.5,16.25 -12.5,26.25 -27.5,18.75" fill="none" stroke="#0D0E10" stroke-width="2.2"/>
+    <polygon points="15,22.5 25,17.5 25,37.5 15,42.5" fill="none" stroke="#0D0E10" stroke-width="2.2"/>
+  </g>
+  <line x1="130" y1="35" x2="130" y2="105" stroke="#C8C4B8" stroke-width="1"/>
+  <text x="150" y="86" fill="#0D0E10" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="42" font-weight="300" letter-spacing="0.5">block</text>
+  <text x="269" y="86" fill="#0D0E10" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="42" font-weight="600" letter-spacing="0.5">flip</text>
+</svg>

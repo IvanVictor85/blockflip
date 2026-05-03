@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280">
+  <title>BlockFlip vertical lockup — light mode</title>
+  <g transform="translate(140, 110)" stroke="#0D0E10" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="-50,-12 0,12 50,-12 50,38 0,62 -50,38" fill="none"/>
+    <line x1="0" y1="12" x2="0" y2="62"/>
+    <polygon points="-50,-12 0,-50 50,-12 0,12" fill="#0D0E10"/>
+  </g>
+  <text x="140" y="220" fill="#0D0E10" text-anchor="middle" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="500" letter-spacing="6">BLOCKFLIP</text>
+  <text x="140" y="248" fill="#7A7A7A" text-anchor="middle" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="10" font-weight="400" letter-spacing="2.5">REAL ASSETS · ON CHAIN</text>
+</svg>

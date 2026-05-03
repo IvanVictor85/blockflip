@@ -47,23 +47,16 @@ export default function OgImage() {
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, zIndex: 1 }}>
-          {/* Logo mark */}
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: "#14F195",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 24,
-              fontWeight: 900,
-              color: "#000",
-            }}
-          >
-            B
-          </div>
+          {/* Símbolo expandido (com janela + porta) */}
+          <svg width="48" height="53" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="#F0EDE5" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round">
+              <polygon points="20,80 100,120 180,80 180,160 100,200 20,160" fill="none"/>
+              <line x1="100" y1="120" x2="100" y2="200"/>
+              <polygon points="20,80 100,20 180,80 100,120" fill="#F0EDE5"/>
+            </g>
+            <polygon points="45,117.5 75,132.5 75,152.5 45,137.5" fill="none" stroke="#F0EDE5" strokeWidth="3"/>
+            <polygon points="130,145 150,135 150,175 130,185" fill="none" stroke="#F0EDE5" strokeWidth="3"/>
+          </svg>
           <span style={{ fontSize: 28, fontWeight: 700, color: "#fff" }}>BlockFlip</span>
           <div
             style={{

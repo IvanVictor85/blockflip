@@ -110,7 +110,7 @@ export async function generateMetadata({
         { url: "/icon", type: "image/png", sizes: "32x32" },
         { url: "/icon?size=192", type: "image/png", sizes: "192x192" },
       ],
-      apple: [{ url: "/logo-blockflip.png", type: "image/png", sizes: "180x180" }],
+      apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
       shortcut: "/favicon.ico",
     },
     category: "finance",

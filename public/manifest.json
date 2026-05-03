@@ -4,7 +4,7 @@
   "description": "Arremate. Reforma. Venda com ágio. Property Flipping tokenizado on-chain. ROI 20-30%.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
+  "background_color": "#0D0E10",
   "theme_color": "#14F195",
   "orientation": "portrait-primary",
   "categories": ["finance", "investment", "blockchain"],
@@ -17,7 +17,7 @@
       "purpose": "any"
     },
     {
-      "src": "/logo-blockflip.png",
+      "src": "/apple-icon",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any maskable"

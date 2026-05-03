@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Menu, X, LayoutDashboard } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { defaultLocale } from '@/i18n/config';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ModeToggle } from '@/components/mode-toggle';
+import { Logo } from '@/components/brand/logo';
 
 // Dynamic import with ssr:false — prevents hydration mismatch caused by
 // browser wallet extensions injecting state before React hydrates.
@@ -34,15 +34,7 @@ export function Navbar() {
 
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <Image
-              src="/logo-blockflip.png"
-              alt="BlockFlip"
-              width={350}
-              height={100}
-              priority
-              unoptimized
-              className="h-28 w-auto object-contain py-1"
-            />
+            <Logo variant="horizontal" height={45} priority />
           </Link>
 
           {/* Desktop Navigation */}
