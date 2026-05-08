@@ -360,7 +360,28 @@
         },
         {
           "name": "pool_vault",
-          "writable": true
+          "docs": [
+            "Pool vault — must be the PDA to prevent vault injection"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
         },
         {
           "name": "operator",
@@ -441,7 +462,28 @@
         },
         {
           "name": "pool_vault",
-          "writable": true
+          "docs": [
+            "Pool vault — must be the PDA to prevent vault injection"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
         },
         {
           "name": "operator_token_account",
@@ -537,7 +579,28 @@
         },
         {
           "name": "pool_vault",
-          "writable": true
+          "docs": [
+            "Pool vault — must be the PDA to prevent vault injection"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
         },
         {
           "name": "investor_token_account",
@@ -554,6 +617,77 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "initialize_pool_vault",
+      "discriminator": [
+        84,
+        139,
+        245,
+        58,
+        37,
+        56,
+        119,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "accepted_mint",
+          "docs": [
+            "Mint da stablecoin aceita por este pool (needed for init)"
+          ]
+        },
+        {
+          "name": "pool_vault",
+          "docs": [
+            "Pool vault — PDA owned by pool_state, prevents arbitrary vault injection"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "initialize_protocol",
@@ -662,7 +796,28 @@
         },
         {
           "name": "pool_vault",
-          "writable": true
+          "docs": [
+            "Pool vault — must be the PDA to prevent vault injection"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
         },
         {
           "name": "investor",

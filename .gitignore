@@ -56,3 +56,8 @@ test-ledger/
 id.json
 
 /src/generated/prisma
+
+# ----------------------------------------------------------------------
+# Pitch & Marketing Materials (private/internal only)
+# ----------------------------------------------------------------------
+pitch-materials/

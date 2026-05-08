@@ -13,7 +13,10 @@
 //   • Investor access remains permissionless
 // ─────────────────────────────────────────────────────────────────────────────
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{self, Mint, Token, TokenAccount, Transfer},
+};
 
 declare_id!("8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T");
 
@@ -21,6 +24,7 @@ declare_id!("8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T");
 const PROTOCOL_SEED: &[u8]   = b"blockflip_v1";
 const SPECIALIST_SEED: &[u8] = b"specialist";
 const POOL_SEED: &[u8]       = b"pool";
+const VAULT_SEED: &[u8]      = b"vault";
 const ASSET_SEED: &[u8]      = b"asset";
 const MILESTONE_SEED: &[u8]  = b"milestone";
 const POSITION_SEED: &[u8]   = b"position";
@@ -122,7 +126,19 @@ pub mod blockflip {
         Ok(())
     }
 
-    // ── 3. deposit_skin_in_game ───────────────────────────────────────────────
+    // ── 3. initialize_pool_vault ──────────────────────────────────────────────
+    // SECURITY FIX: Initialize pool vault as PDA to prevent arbitrary vault injection
+    // Must be called immediately after create_pool by the operator.
+    pub fn initialize_pool_vault(ctx: Context<InitializePoolVault>) -> Result<()> {
+        msg!(
+            "Pool vault initialized for pool {} at {}",
+            ctx.accounts.pool_state.pool_id,
+            ctx.accounts.pool_vault.key()
+        );
+        Ok(())
+    }
+
+    // ── 4. deposit_skin_in_game ───────────────────────────────────────────────
     // Especialista deposita obrigatoriamente 5% do funding_goal.
     // Isso cria sua InvestorPosition e abre o pool para investidores (Funding).
     pub fn deposit_skin_in_game(ctx: Context<DepositSkinInGame>) -> Result<()> {
@@ -369,19 +385,33 @@ pub mod blockflip {
 
         let upside = pool.total_proceeds.saturating_sub(pool.funding_raised);
 
-        // Investor upside pool = 60% of total upside
-        let investor_upside_pool = (upside as u128)
+        // SECURITY FIX: Investor upside pool = 60% of total upside
+        // Safe casting with overflow protection
+        let investor_upside_pool_u128 = (upside as u128)
             .checked_mul(INVESTOR_UPSIDE_BPS)
             .ok_or(BlockFlipError::Overflow)?
             .checked_div(BPS_DENOMINATOR)
-            .ok_or(BlockFlipError::Overflow)? as u64;
+            .ok_or(BlockFlipError::Overflow)?;
 
-        // This investor's pro-rata share of the 60% upside pool
-        let upside_share = (investor_upside_pool as u128)
-            .checked_mul(position.amount_invested as u128)
-            .ok_or(BlockFlipError::Overflow)?
-            .checked_div(pool.funding_raised as u128)
-            .ok_or(BlockFlipError::Overflow)? as u64;
+        let investor_upside_pool = u64::try_from(investor_upside_pool_u128)
+            .map_err(|_| BlockFlipError::Overflow)?;
+
+        // SECURITY FIX: This investor's pro-rata share of the 60% upside pool
+        // Prevent overflow by checking funding_raised > 0 and using safe casting
+        let upside_share = if pool.funding_raised > 0 {
+            let numerator = (investor_upside_pool as u128)
+                .checked_mul(position.amount_invested as u128)
+                .ok_or(BlockFlipError::Overflow)?;
+
+            let result_u128 = numerator
+                .checked_div(pool.funding_raised as u128)
+                .ok_or(BlockFlipError::Overflow)?;
+
+            u64::try_from(result_u128)
+                .map_err(|_| BlockFlipError::Overflow)?
+        } else {
+            0
+        };
 
         // Total payout: full principal back + pro-rata upside share
         let payout = position.amount_invested
@@ -451,27 +481,35 @@ pub mod blockflip {
         ctx: Context<DistributeFees>,
         pool_id: u64,
     ) -> Result<()> {
-        // Clone account info before mutable borrow to satisfy borrow checker
+        // Clone account info BEFORE mutable borrow for later CPI use
         let pool_state_info = ctx.accounts.pool_state.to_account_info();
+
         let pool = &mut ctx.accounts.pool_state;
 
+        // CHECKS: Verify preconditions
         require!(!pool.fees_distributed, BlockFlipError::FeesAlreadyDistributed);
 
         let upside = pool.total_proceeds.saturating_sub(pool.funding_raised);
 
-        // Operator performance: 20% of upside
-        let operator_performance = (upside as u128)
+        // SECURITY FIX: Operator performance: 20% of upside with safe casting
+        let operator_performance_u128 = (upside as u128)
             .checked_mul(OPERATOR_PERF_BPS)
             .ok_or(BlockFlipError::Overflow)?
             .checked_div(BPS_DENOMINATOR)
-            .ok_or(BlockFlipError::Overflow)? as u64;
+            .ok_or(BlockFlipError::Overflow)?;
 
-        // Platform fee: 20% of upside
-        let platform_fee = (upside as u128)
+        let operator_performance = u64::try_from(operator_performance_u128)
+            .map_err(|_| BlockFlipError::Overflow)?;
+
+        // SECURITY FIX: Platform fee: 20% of upside with safe casting
+        let platform_fee_u128 = (upside as u128)
             .checked_mul(PLATFORM_FEE_BPS)
             .ok_or(BlockFlipError::Overflow)?
             .checked_div(BPS_DENOMINATOR)
-            .ok_or(BlockFlipError::Overflow)? as u64;
+            .ok_or(BlockFlipError::Overflow)?;
+
+        let platform_fee = u64::try_from(platform_fee_u128)
+            .map_err(|_| BlockFlipError::Overflow)?;
 
         // Anti-spoofing
         require!(
@@ -487,13 +525,17 @@ pub mod blockflip {
             BlockFlipError::InvalidMint
         );
 
+        // EFFECTS: Set flag BEFORE CPIs to prevent race condition (CEI pattern)
+        // SECURITY FIX: Move state change before external calls
+        pool.fees_distributed = true;
+
         // PDA signer seeds for pool_state (authority of vault)
         let pool_id_bytes = pool_id.to_le_bytes();
-        let bump_byte     = [pool.bump];
+        let bump_byte = [pool.bump];
         let seeds: &[&[u8]] = &[POOL_SEED, &pool_id_bytes, &bump_byte];
         let signer_seeds: &[&[&[u8]]] = &[&seeds[..]];
 
-        // CPI: pool_vault → operator (performance fee)
+        // INTERACTIONS: CPI: pool_vault → operator (performance fee)
         if operator_performance > 0 {
             token::transfer(
                 CpiContext::new_with_signer(
@@ -524,8 +566,6 @@ pub mod blockflip {
                 platform_fee,
             )?;
         }
-
-        pool.fees_distributed = true;
 
         emit!(FeesDistributed {
             pool_id:              pool.pool_id,
@@ -624,6 +664,36 @@ pub struct CreatePool<'info> {
 }
 
 #[derive(Accounts)]
+pub struct InitializePoolVault<'info> {
+    #[account(
+        mut,
+        has_one = operator @ BlockFlipError::Unauthorized,
+    )]
+    pub pool_state: Account<'info, PoolState>,
+
+    /// Mint da stablecoin aceita por este pool (needed for init)
+    pub accepted_mint: Account<'info, Mint>,
+
+    /// Pool vault — PDA owned by pool_state, prevents arbitrary vault injection
+    #[account(
+        init,
+        payer = operator,
+        seeds = [VAULT_SEED, pool_state.key().as_ref()],
+        bump,
+        token::mint = accepted_mint,
+        token::authority = pool_state,
+    )]
+    pub pool_vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub operator: Signer<'info>,
+
+    pub rent: Sysvar<'info, Rent>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct DepositSkinInGame<'info> {
     #[account(
         mut,
@@ -649,8 +719,11 @@ pub struct DepositSkinInGame<'info> {
     )]
     pub operator_token_account: Account<'info, TokenAccount>,
 
+    /// Pool vault — must be the PDA to prevent vault injection
     #[account(
         mut,
+        seeds = [VAULT_SEED, pool_state.key().as_ref()],
+        bump,
         constraint = pool_vault.mint == pool_state.accepted_mint @ BlockFlipError::InvalidMint,
     )]
     pub pool_vault: Account<'info, TokenAccount>,
@@ -709,8 +782,11 @@ pub struct Invest<'info> {
     )]
     pub investor_token_account: Account<'info, TokenAccount>,
 
+    /// Pool vault — must be the PDA to prevent vault injection
     #[account(
         mut,
+        seeds = [VAULT_SEED, pool_state.key().as_ref()],
+        bump,
         constraint = pool_vault.mint == pool_state.accepted_mint @ BlockFlipError::InvalidMint,
     )]
     pub pool_vault: Account<'info, TokenAccount>,
@@ -778,8 +854,11 @@ pub struct DistributeProceeds<'info> {
     )]
     pub investor_position: Account<'info, InvestorPosition>,
 
+    /// Pool vault — must be the PDA to prevent vault injection
     #[account(
         mut,
+        seeds = [VAULT_SEED, pool_state.key().as_ref()],
+        bump,
         constraint = pool_vault.mint == pool_state.accepted_mint @ BlockFlipError::InvalidMint,
     )]
     pub pool_vault: Account<'info, TokenAccount>,
@@ -812,8 +891,11 @@ pub struct DistributeFees<'info> {
     )]
     pub protocol_state: Account<'info, ProtocolState>,
 
+    /// Pool vault — must be the PDA to prevent vault injection
     #[account(
         mut,
+        seeds = [VAULT_SEED, pool_state.key().as_ref()],
+        bump,
         constraint = pool_vault.mint == pool_state.accepted_mint @ BlockFlipError::InvalidMint,
     )]
     pub pool_vault: Account<'info, TokenAccount>,

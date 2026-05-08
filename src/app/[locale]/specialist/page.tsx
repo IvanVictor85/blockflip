@@ -321,7 +321,7 @@ export default function SpecialistPage() {
   const router = useRouter();
   const { connection } = useConnection();
   const { connected, publicKey, sendTransaction } = useWallet();
-  const { createPool, depositSkinInGame, authorizeSpecialist, program, protocolStatePda, deriveSpecialistRegistryPda } = useBlockFlip();
+  const { createPool, initializePoolVault, depositSkinInGame, authorizeSpecialist, program, protocolStatePda, deriveSpecialistRegistryPda } = useBlockFlip();
 
   // SECURITY: Verify on-chain authorization before rendering specialist functionality.
   // null = checking | true = authorized | false = unauthorized
@@ -557,6 +557,9 @@ export default function SpecialistPage() {
         Math.round(goalNum), Math.round(maxNum), acceptedMint.trim()
       );
 
+      // SECURITY FIX: Initialize vault PDA immediately after pool creation
+      await initializePoolVault(poolStatePda, acceptedMint.trim());
+
       const primaryImageUrl = uploadedUrls[0] ?? '';
       const cycleInt = parseInt(cycleDays) || 120;
 
@@ -623,7 +626,7 @@ export default function SpecialistPage() {
       setIsLoading(false);
     }
   }, [
-    connected, publicKey, createPool, preInfra,
+    connected, publicKey, createPool, initializePoolVault, preInfra,
     name, location, description, imageFiles,
     operationType, acquisitionCost, renovationCost, legalCost,
     calculatedTargetCapital, maxInvestment, cycleDays, targetSalePrice, acceptedMint,

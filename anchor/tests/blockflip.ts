@@ -50,8 +50,7 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
   let operatorTokenAccount: PublicKey;
   let investorTokenAccount: PublicKey;
   let platformTreasuryTokenAccount: PublicKey;
-  let poolVault: PublicKey;
-  let poolVaultKeypair: Keypair;
+  let poolVault: PublicKey;  // Now a PDA, not a Keypair
 
   // PDAs
   let protocolStatePda: PublicKey;
@@ -68,6 +67,7 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
   const PROTOCOL_SEED    = Buffer.from("blockflip_v1");
   const SPECIALIST_SEED  = Buffer.from("specialist");
   const POOL_SEED_BUF    = Buffer.from("pool");
+  const VAULT_SEED       = Buffer.from("vault");
   const POSITION_SEED    = Buffer.from("position");
 
   const confirm = async (sig: string) => {
@@ -130,10 +130,10 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
       program.programId
     );
 
-    // Pool vault (explicit keypair — owner is off-curve PDA)
-    poolVaultKeypair = Keypair.generate();
-    poolVault = await createAccount(
-      connection, payer, mint, poolStatePda, poolVaultKeypair
+    // Pool vault (PDA — will be initialized by initialize_pool_vault)
+    [poolVault] = PublicKey.findProgramAddressSync(
+      [VAULT_SEED, poolStatePda.toBuffer()],
+      program.programId
     );
 
     // Participant token accounts
@@ -306,7 +306,41 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
     assert.deepEqual(pool.status, { pending: {} });
   });
 
-  it("6 · deposit_skin_in_game → operator deposits 50, pool → Funding", async () => {
+  it("6 · initialize_pool_vault → creates vault PDA for the pool", async () => {
+    await program.methods
+      .initializePoolVault()
+      .accounts({
+        poolState: poolStatePda,
+        acceptedMint: mint,
+        poolVault: poolVault,
+        operator: operator.publicKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([operator])
+      .rpc({ commitment: "confirmed" });
+
+    // Verify vault was created and is owned by pool_state
+    const vaultAccount = await getAccount(connection, poolVault);
+    assert.equal(
+      vaultAccount.owner.toBase58(),
+      poolStatePda.toBase58(),
+      "vault authority must be pool_state PDA"
+    );
+    assert.equal(
+      vaultAccount.mint.toBase58(),
+      mint.toBase58(),
+      "vault mint mismatch"
+    );
+    assert.equal(
+      vaultAccount.amount.toString(),
+      "0",
+      "vault should start with 0 balance"
+    );
+  });
+
+  it("8 · deposit_skin_in_game → operator deposits 50, pool → Funding", async () => {
     await program.methods
       .depositSkinInGame()
       .accounts({
@@ -330,7 +364,7 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
     assert.equal(Number(vault.amount), 50);
   });
 
-  it("7 · invest → investor deposits 950, pool → Active", async () => {
+  it("9 · invest → investor deposits 950, pool → Active", async () => {
     await program.methods
       .invest(new BN(950))
       .accounts({
@@ -350,13 +384,13 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
     assert.equal(pool.fundingRaised.toNumber(), 1000);
   });
 
-  it("8 · simulate sale: mint 200 profit to vault (total 1200)", async () => {
+  it("10 · simulate sale: mint 200 profit to vault (total 1200)", async () => {
     await mintTo(connection, payer, mint, poolVault, payer, 200);
     const vault = await getAccount(connection, poolVault);
     assert.equal(Number(vault.amount), 1200);
   });
 
-  it("9 · complete_pool(1200) → status Completed", async () => {
+  it("11 · complete_pool(1200) → status Completed", async () => {
     await program.methods
       .completePool(new BN(1200))
       .accounts({
@@ -371,7 +405,7 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
     assert.equal(pool.totalProceeds.toNumber(), 1200);
   });
 
-  it("10 · distribute_proceeds: investor gets 950+114=1064", async () => {
+  it("12 · distribute_proceeds: investor gets 950+114=1064", async () => {
     await program.methods
       .distributeProceeds(POOL_ID)
       .accounts({
@@ -391,7 +425,7 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
     assert.isTrue(pos.hasClaimed);
   });
 
-  it("11 · distribute_proceeds: operator-as-investor gets 50+6=56", async () => {
+  it("13 · distribute_proceeds: operator-as-investor gets 50+6=56", async () => {
     await program.methods
       .distributeProceeds(POOL_ID)
       .accounts({
@@ -412,7 +446,7 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
     assert.equal(Number(vault.amount), 80, "80 remaining for fees");
   });
 
-  it("12 · distribute_fees: platform gets exactly 40, operator gets 40", async () => {
+  it("14 · distribute_fees: platform gets exactly 40, operator gets 40", async () => {
     await program.methods
       .distributeFees(POOL_ID)
       .accounts({
@@ -440,7 +474,7 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
     assert.isTrue(pool.feesDistributed,     "fees_distributed = true");
   });
 
-  it("13 · anti-double: distribute_fees again → FeesAlreadyDistributed", async () => {
+  it("15 · anti-double: distribute_fees again → FeesAlreadyDistributed", async () => {
     try {
       await program.methods
         .distributeFees(POOL_ID)
@@ -465,7 +499,7 @@ describe("blockflip v3 – Specialist Governance + Marketplace 60/20/20", () => 
     }
   });
 
-  it("14 · anti-double: investor claim again → AlreadyClaimed", async () => {
+  it("16 · anti-double: investor claim again → AlreadyClaimed", async () => {
     try {
       await program.methods
         .distributeProceeds(POOL_ID)

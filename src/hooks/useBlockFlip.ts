@@ -10,6 +10,7 @@ import {
   PROTOCOL_SEED,
   SPECIALIST_SEED,
   POOL_SEED,
+  VAULT_SEED,
   POSITION_SEED,
   TOKEN_DECIMALS,
 } from '@/anchor/setup';
@@ -154,6 +155,49 @@ export function useBlockFlip() {
     [program, wallet, protocolStatePda]
   );
 
+  // ── initializePoolVault ────────────────────────────────────────────────────
+  // SECURITY FIX: Initialize vault as PDA to prevent arbitrary vault injection
+  // Must be called immediately after createPool
+
+  const initializePoolVault = useCallback(
+    async (poolStatePda: PublicKey, acceptedMintStr: string): Promise<string> => {
+      if (!program || !wallet) throw new Error('Wallet not connected');
+
+      const acceptedMint = new PublicKey(acceptedMintStr);
+      const [poolVaultPda] = PublicKey.findProgramAddressSync(
+        [VAULT_SEED, poolStatePda.toBuffer()],
+        PROGRAM_ID
+      );
+
+      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+      const RENT_SYSVAR = new PublicKey('SysvarRent111111111111111111111111111111111');
+
+      let sig: string;
+      try {
+        sig = await program.methods
+          .initializePoolVault()
+          .accounts({
+            poolState: poolStatePda,
+            acceptedMint,
+            poolVault: poolVaultPda,
+            operator: wallet.publicKey,
+            rent: RENT_SYSVAR,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc({ commitment: 'confirmed' });
+      } catch (err: unknown) {
+        const msg = (err as Error)?.message ?? '';
+        if (!msg.includes('already been processed')) throw err;
+        const match = msg.match(/[1-9A-HJ-NP-Za-km-z]{87,88}/);
+        sig = match ? match[0] : '';
+      }
+
+      return sig;
+    },
+    [program, wallet]
+  );
+
   // ── depositSkinInGame ──────────────────────────────────────────────────────
   // Operator deposits 5% skin-in-game → pool Pending → Funding
 
@@ -257,6 +301,7 @@ export function useBlockFlip() {
     fetchProtocolState,
     authorizeSpecialist,
     createPool,
+    initializePoolVault,
     depositSkinInGame,
     invest,
     derivePoolPda,

@@ -103,6 +103,7 @@ export default function TestDrivePage() {
     fetchProtocolState,
     authorizeSpecialist,
     createPool,
+    initializePoolVault,
     depositSkinInGame,
     invest,
     derivePoolPda,
@@ -184,9 +185,13 @@ export default function TestDrivePage() {
         parseInt(cpMax, 10),
         cpMint.trim()
       );
+
+      // SECURITY FIX: Initialize vault PDA
+      await initializePoolVault(result.poolStatePda, cpMint.trim());
+
       log(
         'ok',
-        `Pool #${result.poolId} criada — PDA: ${shortKey(result.poolStatePda.toBase58())}`,
+        `Pool #${result.poolId} criada & vault initialized — PDA: ${shortKey(result.poolStatePda.toBase58())}`,
         result.sig
       );
     } catch (e: unknown) {
@@ -194,7 +199,7 @@ export default function TestDrivePage() {
     } finally {
       setLoadingCp(false);
     }
-  }, [createPool, cpGoal, cpMax, cpMint, log]);
+  }, [createPool, initializePoolVault, cpGoal, cpMax, cpMint, log]);
 
   // ── Deposit Skin in Game ──────────────────────────────────────────────────
   const [sigPoolId, setSigPoolId] = useState('');
