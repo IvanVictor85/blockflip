@@ -338,27 +338,40 @@ export const mockUnitEconomics: UnitEconomicsData = {
   reformCost: 55000,
   operationalCost: 15000,
   totalCost: 450000,
-  targetSalePrice: 520000,
-  grossProfit: 70000,
-  netProfit: 63000,
-  investorShare: 56700,
-  protocolFee: 6300,
+  targetSalePrice: 565000,
+  grossProfit: 115000,
+  netProfit: 115000,
+  investorShare: 69000,    // 60% of 115,000 (15.3% ROI)
+  operatorShare: 23000,    // 20% of 115,000
+  protocolFee: 23000,      // 20% of 115,000
 };
 
 export const formatCurrency = (value: number, currency: string = 'USDC'): string => {
   if (currency === 'USDC') {
     return `${value.toLocaleString('en-US')} USDC`;
   }
+  if (currency === 'EUR') {
+    return `€${value.toLocaleString('es-ES')}`;
+  }
   return `R$ ${value.toLocaleString('pt-BR')}`;
 };
 
-// Fixed reference rate (Apr 2026). Replace with live API when ready.
+// Fixed reference rates (Apr 2026). Replace with live API when ready.
 const USDC_TO_BRL = 5.70;
+const USDC_TO_EUR = 0.92;
+
 export const formatBRL = (usdc: number): string => {
   const brl = usdc * USDC_TO_BRL;
   if (brl >= 1_000_000) return `≈ R$ ${(brl / 1_000_000).toFixed(1)}M`;
   if (brl >= 1_000) return `≈ R$ ${(brl / 1_000).toFixed(0)}K`;
   return `≈ R$ ${Math.round(brl).toLocaleString('pt-BR')}`;
+};
+
+export const formatEUR = (usdc: number): string => {
+  const eur = usdc * USDC_TO_EUR;
+  if (eur >= 1_000_000) return `≈ €${(eur / 1_000_000).toFixed(1)}M`;
+  if (eur >= 1_000) return `≈ €${(eur / 1_000).toFixed(0)}K`;
+  return `≈ €${Math.round(eur).toLocaleString('es-ES')}`;
 };
 
 export const formatPercentage = (value: number): string => {

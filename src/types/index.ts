@@ -119,5 +119,6 @@ export interface UnitEconomicsData {
   grossProfit: number;
   netProfit: number;
   investorShare: number;
+  operatorShare: number;
   protocolFee: number;
 }

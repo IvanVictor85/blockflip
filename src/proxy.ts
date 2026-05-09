@@ -6,6 +6,11 @@ import { routing } from './i18n/routing';
 const intlMiddleware = createIntlMiddleware(routing);
 
 export function proxy(request: NextRequest) {
+  // Bypass i18n for pitch demo URL (secret demo link)
+  if (request.nextUrl.pathname === '/pitch-demo-x7k2m9') {
+    return;
+  }
+
   const response = intlMiddleware(request);
 
   // OWASP: Security Misconfiguration — Security Headers

@@ -57,14 +57,32 @@ export function BuildCycle() {
                   {/* Label */}
                   <span className="text-sm font-semibold text-center">{label}</span>
 
-                  {/* Placeholder fields */}
+                  {/* On-chain evidence fields */}
                   <div className="w-full space-y-1.5">
                     <div className="h-6 rounded-md bg-secondary/60 border border-border/50 px-2 flex items-center">
-                      <span className="text-[10px] text-muted-foreground/50">{t('dateLabel')}</span>
+                      <span className="text-[10px] text-muted-foreground/50">
+                        {idx === 0 ? '05/05/2026' : t('dateLabel')}
+                      </span>
                     </div>
-                    <div className="h-6 rounded-md bg-secondary/60 border border-border/50 px-2 flex items-center">
-                      <span className="text-[10px] text-muted-foreground/50">{t('photoLabel')}</span>
+                    <div className="h-6 rounded-md bg-secondary/60 border border-border/50 px-2 flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground/50">
+                        {idx === 0 ? t('photoLabel') : t('photoLabel')}
+                      </span>
                     </div>
+                    {/* Solscan link (only for stage 0 - Auction completed) */}
+                    {idx === 0 && (
+                      <a
+                        href="https://solscan.io/tx/8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T?cluster=devnet"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[10px] text-[#14F195] hover:text-[#0ED47F] transition-colors font-mono"
+                      >
+                        <span>Tx: 8HJ9...E5T</span>
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    )}
                   </div>
 
                   {/* Status pill */}

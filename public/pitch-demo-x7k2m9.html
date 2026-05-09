@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockFlip - Colosseum 2026 Pitch (2min)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+
+        :root {
+            --bg-color: #0b0d14;
+            --card-bg: #151826;
+            --text-main: #ffffff;
+            --text-muted: #a0aec0;
+            --accent: #14F195;
+            --accent-purple: #9945FF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-color);
+            padding: 60px 80px;
+            box-sizing: border-box;
+            position: relative;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            opacity: 1;
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-purple));
+        }
+
+        .tag {
+            background: rgba(20, 241, 149, 0.15);
+            color: var(--accent);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        h2 {
+            font-size: 2.8rem;
+            margin: 0 0 30px 0;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+            font-weight: 700;
+        }
+
+        h3 {
+            font-size: 1.6rem;
+            margin: 0 0 15px 0;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        ul {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            padding-left: 20px;
+        }
+
+        strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            flex: 1;
+            align-items: start;
+            margin-top: 20px;
+        }
+
+        .col-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .magic-number {
+            font-size: 4.5rem;
+            color: var(--accent-purple);
+            font-weight: 900;
+            display: block;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 35px;
+            font-weight: 500;
+        }
+
+        .slide-footer {
+            position: absolute;
+            bottom: 30px;
+            left: 80px;
+            right: 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+            color: rgba(255,255,255,0.5);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 18px;
+        }
+
+        .slide-footer .highlight {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .slide-center {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .header-logo {
+            position: absolute;
+            top: 50px;
+            right: 80px;
+            width: 144px;
+        }
+
+        .hero-logo {
+            width: 400px;
+            margin-bottom: 30px;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            padding: 18px 25px;
+            background: var(--card-bg);
+            border-left: 4px solid var(--accent);
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-size: 1.2rem;
+        }
+
+        .feature-list li strong {
+            display: block;
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+
+        /* Team cards */
+        .team-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 20px;
+            flex: 1;
+        }
+
+        .team-member {
+            background: var(--card-bg);
+            padding: 35px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .team-photo {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 3px solid var(--accent-purple);
+            margin-bottom: 20px;
+            background: #2a2d3d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .team-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .team-member:first-child .team-photo {
+            border-color: var(--accent);
+        }
+
+        .team-member:last-child .team-photo {
+            border-color: var(--accent-purple);
+        }
+
+        .team-name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .team-role {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .team-bio {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
+        /* Diagram */
+        .diagram {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .diagram-step {
+            font-size: 1.3rem;
+            color: var(--text-main);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: start;
+            gap: 15px;
+        }
+
+        .diagram-step::before {
+            content: "→";
+            font-size: 1.8rem;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        /* Traction boxes */
+        .traction-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+            flex: 1;
+        }
+
+        .traction-box {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-purple);
+        }
+
+        .traction-box h4 {
+            color: var(--accent);
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .traction-box ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .traction-box li {
+            padding: 10px 0;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .traction-box li::before {
+            content: "✓ ";
+            color: var(--accent);
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .secondary-market-box {
+            background: linear-gradient(135deg, rgba(153, 69, 255, 0.1), rgba(20, 241, 149, 0.1));
+            border-left-color: var(--accent);
+            margin-top: 20px;
+        }
+
+        /* Navigation */
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-main);
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            color: var(--text-muted);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+        }
+
+        /* Solution cards sequential animation */
+        @keyframes cardFadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .solution-card {
+            opacity: 0;
+        }
+
+        .slide.active .solution-card:nth-child(1) {
+            animation: cardFadeIn 0.6s ease-out 2s forwards;
+        }
+
+        .slide.active .solution-card:nth-child(2) {
+            animation: cardFadeIn 0.6s ease-out 3s forwards;
+        }
+
+        .slide.active .solution-card:nth-child(3) {
+            animation: cardFadeIn 0.6s ease-out 4s forwards;
+        }
+
+        /* Logo animations */
+        @keyframes flipTextAppear {
+            0% { opacity: 0; transform: translateX(-10px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes roofSpin {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(1080deg); }
+        }
+
+        @keyframes windowFadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes doorFadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .slide.active #animated-logo .flip-text {
+            animation: flipTextAppear 0.6s ease-out 0.8s both;
+        }
+
+        .slide.active #animated-logo .roof-group {
+            transform-origin: 60px 30px;
+            animation: roofSpin 1.5s ease-in-out 1.6s both;
+        }
+
+        .slide.active #animated-logo .window {
+            animation: windowFadeIn 0.4s ease-out 3.2s both;
+        }
+
+        .slide.active #animated-logo .door {
+            animation: doorFadeIn 0.4s ease-out 3.7s both;
+        }
+    </style>
+</head>
+<body>
+
+<!-- SLIDE 1: COVER (5s) -->
+<div class="slide slide-center active">
+    <div class="hero-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" width="100%" height="100%">
+            <g transform="translate(60, 70)" stroke="#F0EDE5" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+              <polygon points="-40,-10 0,10 40,-10 40,30 0,50 -40,30" fill="none"/>
+              <line x1="0" y1="10" x2="0" y2="50"/>
+              <polygon points="-40,-10 0,-40 40,-10 0,10" fill="#F0EDE5"/>
+            </g>
+            <line x1="130" y1="35" x2="130" y2="105" stroke="#3A3A3A" stroke-width="1"/>
+            <text x="150" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="300" letter-spacing="0.5">block</text>
+            <text x="269" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="600" letter-spacing="0.5">flip</text>
+        </svg>
+    </div>
+    <p style="font-size: 2rem; color: var(--text-main); margin-top: 10px; line-height: 1.4;">
+        Real estate yields at the speed of light,<br>with the security of a vault.
+    </p>
+    <p style="font-size: 1.3rem; color: var(--accent); margin-top: 40px; font-weight: 600;">Danielle Rustice & Ivan Oliveira</p>
+    <div class="tag" style="margin-top: 20px;">Solana Colosseum 2026</div>
+</div>
+
+<!-- SLIDE 2: THE PROBLEM (20s) -->
+<div class="slide">
+    <div class="header-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" width="100%" height="100%">
+            <g transform="translate(60, 70)" stroke="#F0EDE5" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+              <polygon points="-40,-10 0,10 40,-10 40,30 0,50 -40,30" fill="none"/>
+              <line x1="0" y1="10" x2="0" y2="50"/>
+              <polygon points="-40,-10 0,-40 40,-10 0,10" fill="#F0EDE5"/>
+            </g>
+            <line x1="130" y1="35" x2="130" y2="105" stroke="#3A3A3A" stroke-width="1"/>
+            <text x="150" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="300" letter-spacing="0.5">block</text>
+            <text x="269" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="600" letter-spacing="0.5">flip</text>
+        </svg>
+    </div>
+    <div class="tag">The Problem</div>
+    <h2>The Alpha Real Estate Trust Gap</h2>
+    <div class="grid-2">
+        <div class="col-content">
+            <span class="magic-number">R$200B</span>
+            <p class="stat-label">Brazil auction market (largest in LATAM)</p>
+
+            <span class="magic-number">€756B</span>
+            <p class="stat-label">European real estate market (2025)</p>
+
+            <span class="magic-number">49%</span>
+            <p class="stat-label">of investors seeking Value-Added projects</p>
+
+            <span class="magic-number">40%+</span>
+            <p class="stat-label">annual returns (10-20% net per project)</p>
+        </div>
+        <div class="col-content">
+            <ul class="feature-list">
+                <li><strong>No Skin-in-the-game</strong>Investors fear moral hazard and don't trust operators</li>
+                <li><strong>Locked Capital</strong>Operators can't scale — capital trapped in 2-3 properties</li>
+                <li><strong>Broken Traditional Finance</strong>Opaque, slow, expensive settlement</li>
+            </ul>
+        </div>
+    </div>
+    <div class="slide-footer">
+        <span class="highlight">Real estate flipping is profitable, but the trust model is broken.</span>
+        <span>02</span>
+    </div>
+</div>
+
+<!-- SLIDE 3: THE SOLUTION (30s) -->
+<div class="slide" style="background-image: linear-gradient(rgba(11, 13, 20, 0.88), rgba(11, 13, 20, 0.88)), url('/docs/before-after/ANTESDEPOIS PITCH.png'); background-size: cover; background-position: center;">
+    <div class="header-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" width="100%" height="100%">
+            <g transform="translate(60, 70)" stroke="#F0EDE5" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+              <polygon points="-40,-10 0,10 40,-10 40,30 0,50 -40,30" fill="none"/>
+              <line x1="0" y1="10" x2="0" y2="50"/>
+              <polygon points="-40,-10 0,-40 40,-10 0,10" fill="#F0EDE5"/>
+            </g>
+            <line x1="130" y1="35" x2="130" y2="105" stroke="#3A3A3A" stroke-width="1"/>
+            <text x="150" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="300" letter-spacing="0.5">block</text>
+            <text x="269" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="600" letter-spacing="0.5">flip</text>
+        </svg>
+    </div>
+    <div class="tag">The Solution</div>
+    <h2>Tokenizing High-Margin Real Estate Flipping</h2>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 40px;">
+        <!-- Column 1: THE BUSINESS -->
+        <div class="solution-card" style="background: var(--card-bg); padding: 30px; border-radius: 12px; border-left: 4px solid var(--accent);">
+            <div style="font-size: 2.5rem; margin-bottom: 15px;">📈</div>
+            <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--accent); margin-bottom: 20px;">THE BUSINESS</h3>
+            <div style="font-size: 1.15rem; line-height: 1.8; color: var(--text-muted);">
+                <p style="margin-bottom: 12px;">✓ Buy at auction</p>
+                <p style="margin-bottom: 12px; color: var(--text-main);"><strong>30-50% below market</strong></p>
+                <p style="margin-bottom: 12px;">✓ Light renovation</p>
+                <p style="margin-bottom: 12px;">✓ 6-month hold → Sell</p>
+                <p style="margin-top: 20px; font-size: 1.2rem; color: var(--accent); font-weight: 600;">Margin so large, losing money is nearly impossible</p>
+            </div>
+        </div>
+
+        <!-- Column 2: THE PLATFORM -->
+        <div class="solution-card" style="background: var(--card-bg); padding: 30px; border-radius: 12px; border-left: 4px solid var(--accent-purple);">
+            <div style="font-size: 2.5rem; margin-bottom: 15px;">🔗</div>
+            <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 20px;">THE PLATFORM</h3>
+            <div style="font-size: 1.15rem; line-height: 1.8; color: var(--text-muted);">
+                <p style="margin-bottom: 12px;">Each flip = <strong style="color: var(--text-main);">on-chain pool</strong></p>
+                <p style="margin-bottom: 12px;">Investors get <strong style="color: var(--text-main);">tokens</strong></p>
+                <p style="margin-bottom: 15px; margin-top: 20px; color: var(--text-main);">Track progress live:</p>
+                <p style="margin-bottom: 8px; padding-left: 15px;">• Photos</p>
+                <p style="margin-bottom: 8px; padding-left: 15px;">• Documents</p>
+                <p style="margin-bottom: 8px; padding-left: 15px;">• Renovation status</p>
+                <p style="margin-top: 20px; font-size: 1.2rem; color: var(--accent-purple); font-weight: 600;">Full transparency on Solana</p>
+            </div>
+        </div>
+
+        <!-- Column 3: THE TRUST LAYER -->
+        <div class="solution-card" style="background: var(--card-bg); padding: 30px; border-radius: 12px; border-left: 4px solid var(--accent);">
+            <div style="font-size: 2.5rem; margin-bottom: 15px;">🔒</div>
+            <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--accent); margin-bottom: 20px;">THE TRUST LAYER</h3>
+            <div style="font-size: 1.15rem; line-height: 1.8; color: var(--text-muted);">
+                <p style="margin-bottom: 15px;">Operator deposits <strong style="color: var(--text-main);">5% in PDA vault</strong></p>
+                <p style="margin-bottom: 15px;">Smart contract <strong style="color: var(--text-main);">blocks</strong> investor capital until confirmed</p>
+                <p style="margin-bottom: 15px;">If flip fails, operator <strong style="color: var(--text-main);">loses first</strong></p>
+                <p style="margin-top: 20px; font-size: 1.2rem; color: var(--accent); font-weight: 600;">Cryptographic proof on-chain</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-footer">
+        <span class="highlight">High margins. Full transparency. Skin-in-the-game enforced by code.</span>
+        <span>03</span>
+    </div>
+</div>
+
+<!-- SLIDE 4: UNFAIR ADVANTAGE (35s) -->
+<div class="slide">
+    <div class="header-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" width="100%" height="100%">
+            <g transform="translate(60, 70)" stroke="#F0EDE5" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+              <polygon points="-40,-10 0,10 40,-10 40,30 0,50 -40,30" fill="none"/>
+              <line x1="0" y1="10" x2="0" y2="50"/>
+              <polygon points="-40,-10 0,-40 40,-10 0,10" fill="#F0EDE5"/>
+            </g>
+            <line x1="130" y1="35" x2="130" y2="105" stroke="#3A3A3A" stroke-width="1"/>
+            <text x="150" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="300" letter-spacing="0.5">block</text>
+            <text x="269" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="600" letter-spacing="0.5">flip</text>
+        </svg>
+    </div>
+    <div class="tag">Unfair Advantage</div>
+    <h2>Built-in Distribution & Leadership</h2>
+    <div class="team-grid">
+        <div class="team-member">
+            <div class="team-photo">
+                <img src="/fotos/ivan.png" alt="Ivan Oliveira">
+            </div>
+            <div class="team-name">Ivan Oliveira</div>
+            <div class="team-role">Founder & Lead Builder</div>
+            <p class="team-bio">
+                <strong>13+ years</strong> in systems engineering. Specialized in translating complex real-world financial logic into secure, impenetrable Web3 architecture.
+                <br><br>
+                <strong style="color: var(--accent);">Security audit shipped:</strong> 3 CRITICAL fixes implemented (vault PDA, overflow protection, CEI pattern).
+                <br><br>
+                Active in crypto ecosystem: <strong>Merge SP 2026</strong>, Blockchain Conference BR 2023-2026, Blockchain Rio/SP 2024.
+            </p>
+        </div>
+        <div class="team-member">
+            <div class="team-photo">
+                <img src="/fotos/danielle.jpg" alt="Danielle Rustice">
+            </div>
+            <div class="team-name">Danielle Rustice</div>
+            <div class="team-role">Co-Founder & CGO</div>
+            <p class="team-bio">
+                Ex-COO of <strong>Grupo Primo</strong> (Thiago Nigro's Primo Rico) — Brazil's largest fintech education platform serving <strong>millions of retail investors</strong>.
+                <br><br>
+                Direct line to <strong>Priscila Perini</strong> (<strong style="color: var(--accent);">718K+ followers</strong>), Brazil's #1 auction specialist. Supply and demand secured for Day 1.
+            </p>
+        </div>
+    </div>
+    <div class="slide-footer">
+        <span class="highlight">We're not searching for users—they're already in our pipeline.</span>
+        <span>04</span>
+    </div>
+</div>
+
+<!-- SLIDE 5: TRACTION + BUSINESS MODEL (25s) -->
+<div class="slide">
+    <div class="header-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" width="100%" height="100%">
+            <g transform="translate(60, 70)" stroke="#F0EDE5" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+              <polygon points="-40,-10 0,10 40,-10 40,30 0,50 -40,30" fill="none"/>
+              <line x1="0" y1="10" x2="0" y2="50"/>
+              <polygon points="-40,-10 0,-40 40,-10 0,10" fill="#F0EDE5"/>
+            </g>
+            <line x1="130" y1="35" x2="130" y2="105" stroke="#3A3A3A" stroke-width="1"/>
+            <text x="150" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="300" letter-spacing="0.5">block</text>
+            <text x="269" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="600" letter-spacing="0.5">flip</text>
+        </svg>
+    </div>
+    <div class="tag">Business & Execution</div>
+    <h2>Traction & Revenue Model</h2>
+    <div class="traction-grid">
+        <div class="traction-box">
+            <h4>Technical Readiness</h4>
+            <ul>
+                <li><strong>Devnet Live:</strong> Program deployed and fully functional</li>
+                <li><strong>Secure:</strong> Anchor V3 fully audited with 3 Critical Fixes shipped</li>
+                <li><strong style="color: var(--accent-purple);">🏆 Superteam Ideathon:</strong> Honorable Mention (Validated in Brazil)</li>
+                <li><strong>Production Ready:</strong> Frontend with wallet integration, i18n (PT/EN/ES)</li>
+            </ul>
+        </div>
+        <div class="traction-box" style="border-left-color: var(--accent);">
+            <h4>Revenue & Goals</h4>
+            <ul>
+                <li><strong>Origination Fee:</strong> Platform entry fee</li>
+                <li><strong>Success Fee:</strong> Commission on net flip profit (aligned incentives)</li>
+                <li><strong>Secondary Market Fee:</strong> 0.5-1% per trade (recurring revenue)</li>
+            </ul>
+            <p style="margin-top: 25px; font-size: 1.1rem; color: var(--text-main);">
+                <strong style="color: var(--accent-purple);">Next 90 Days:</strong> Mainnet launch, first 3 pools, <strong>€500K TVL target</strong>
+            </p>
+        </div>
+    </div>
+    <div class="secondary-market-box" style="background: var(--card-bg); padding: 25px; border-radius: 12px; border-left: 4px solid var(--accent); margin-top: 20px;">
+        <h4 style="color: var(--accent); font-size: 1.3rem; margin-bottom: 10px;">💎 Killer Feature: Instant Liquidity</h4>
+        <p style="font-size: 1.1rem; line-height: 1.5;">
+            Investors needing quick exit can offer tokens at discount (5-15% off) on secondary market vs. waiting <strong>6 months</strong> for full 30%+ return. We earn fees on every trade.
+        </p>
+    </div>
+    <div class="slide-footer">
+        <span class="highlight">Built on Solana for instant settlement and near-zero transaction costs.</span>
+        <span>05</span>
+    </div>
+</div>
+
+<!-- SLIDE 6: THANK YOU (5s) -->
+<div class="slide slide-center">
+    <div style="width: 450px; margin-bottom: 30px;">
+        <svg id="animated-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" width="100%" height="100%">
+            <g transform="translate(60, 70)" stroke="#F0EDE5" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+              <polygon points="-40,-10 0,10 40,-10 40,30 0,50 -40,30" fill="none"/>
+              <line x1="0" y1="10" x2="0" y2="50"/>
+            </g>
+            <g class="roof-group">
+              <polygon transform="translate(60, 70)" points="-40,-10 0,-40 40,-10 0,10" fill="#F0EDE5" stroke="#F0EDE5" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+            </g>
+            <g class="window" style="opacity: 0;">
+              <polygon transform="translate(60, 70)" points="-27.5,8.75 -12.5,16.25 -12.5,26.25 -27.5,18.75" fill="none" stroke="#F0EDE5" stroke-width="2.2" stroke-linejoin="round"/>
+            </g>
+            <g class="door" style="opacity: 0;">
+              <polygon transform="translate(60, 70)" points="15,22.5 25,17.5 25,37.5 15,42.5" fill="none" stroke="#F0EDE5" stroke-width="2.2" stroke-linejoin="round"/>
+            </g>
+            <line x1="130" y1="35" x2="130" y2="105" stroke="#3A3A3A" stroke-width="1"/>
+            <text x="150" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="300" letter-spacing="0.5">block</text>
+            <text class="flip-text" x="269" y="86" fill="#F0EDE5" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-size="42" font-weight="600" letter-spacing="0.5" style="opacity: 0;">flip</text>
+        </svg>
+    </div>
+
+    <p style="color: var(--accent); font-size: 1.6rem; font-weight: 600; margin-bottom: 15px;">Join us in the RWA Revolution.</p>
+
+    <p style="color: var(--text-muted); font-size: 1.15rem; line-height: 1.6; margin-bottom: 30px; max-width: 700px;">
+        Beyond financial returns — BlockFlip creates real homes for real families,<br>from Cerdanyola to the world.
+    </p>
+
+    <div style="margin-top: 20px; width: 290px; height: 290px; background-color: white; border-radius: 12px; padding: 20px; position: relative; display: flex; align-items: center; justify-content: center;">
+        <img id="qr-image" src="" alt="QR Code" style="width: 250px; height: 250px; display: none;">
+        <svg id="qr-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" width="60" height="66"
+             style="position: absolute; background: white; padding: 5px; border-radius: 8px; display: none; pointer-events: none;">
+          <g stroke="#0D0E10" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+            <polygon points="20,80 100,120 180,80 180,160 100,200 20,160" fill="none"/>
+            <line x1="100" y1="120" x2="100" y2="200"/>
+            <polygon points="20,80 100,20 180,80 100,120" fill="#0D0E10"/>
+          </g>
+        </svg>
+    </div>
+
+    <p style="margin-top: 30px; font-size: 1.5rem; font-weight: 600; color: var(--text-main);">blockflip.finance</p>
+    <p style="margin-top: 10px; font-size: 1.1rem; color: var(--text-muted);">Built on Solana</p>
+</div>
+
+<div class="slide-counter">
+    <span id="current-slide">1</span> / <span id="total-slides">6</span>
+</div>
+
+<div class="nav-controls">
+    <button class="nav-btn" id="prev-btn" onclick="previousSlide()">← Previous</button>
+    <button class="nav-btn" id="next-btn" onclick="nextSlide()">Next →</button>
+</div>
+
+<script>
+let currentSlide = 0;
+const slides = document.querySelectorAll('.slide');
+const totalSlides = slides.length;
+
+function showSlide(n) {
+    if (n >= totalSlides) {
+        currentSlide = totalSlides - 1;
+    } else if (n < 0) {
+        currentSlide = 0;
+    } else {
+        currentSlide = n;
+    }
+
+    slides.forEach(slide => slide.classList.remove('active'));
+    slides[currentSlide].classList.add('active');
+
+    document.getElementById('current-slide').textContent = currentSlide + 1;
+    document.getElementById('prev-btn').disabled = currentSlide === 0;
+    document.getElementById('next-btn').disabled = currentSlide === totalSlides - 1;
+
+    // Generate QR on slide 6
+    if (currentSlide === 5) {
+        setTimeout(generateQR, 100);
+    }
+}
+
+function nextSlide() {
+    showSlide(currentSlide + 1);
+}
+
+function previousSlide() {
+    showSlide(currentSlide - 1);
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        nextSlide();
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        previousSlide();
+    } else if (e.key === 'Home') {
+        e.preventDefault();
+        showSlide(0);
+    } else if (e.key === 'End') {
+        e.preventDefault();
+        showSlide(totalSlides - 1);
+    }
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.nav-controls')) return;
+    const halfWidth = window.innerWidth / 2;
+    if (e.clientX > halfWidth) {
+        nextSlide();
+    } else {
+        previousSlide();
+    }
+});
+
+function generateQR() {
+    const img = document.getElementById('qr-image');
+    const logo = document.getElementById('qr-logo');
+    if (!img || !logo) return;
+
+    const url = 'https://blockflip.finance';
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}&ecc=H`;
+
+    img.src = qrApiUrl;
+    img.onload = function() {
+        img.style.display = 'block';
+        logo.style.display = 'block';
+    };
+
+    img.onerror = function() {
+        console.warn('QR API failed, using fallback');
+        const qrContainer = img.parentElement;
+        qrContainer.innerHTML = `
+            <svg width="250" height="250" viewBox="0 0 250 250" style="background: white;">
+                <text x="125" y="115" text-anchor="middle" font-family="Arial" font-size="14" fill="#333">
+                    QR Code unavailable offline
+                </text>
+                <text x="125" y="135" text-anchor="middle" font-family="Arial" font-size="18" font-weight="bold" fill="#000">
+                    blockflip.finance
+                </text>
+            </svg>
+        `;
+    };
+}
+
+showSlide(0);
+</script>
+
+</body>
+</html>

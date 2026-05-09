@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { PropertyDocuments } from '@/components/property-documents';
 import { mockAssets } from '@/data/mock-assets';
 import { Asset, AssetStatus } from '@/types';
 import { getPoolsAction } from '@/actions/pool';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ─── LocalStorage pool shape ──────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ export function AssetMarketplace() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [activeTab, setActiveTab] = useState<'proof' | 'documents'>('proof');
   const [realAssets, setRealAssets] = useState<Asset[]>([]);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Build investment totals from localStorage
@@ -245,6 +247,13 @@ export function AssetMarketplace() {
     setActiveTab('proof');
   };
 
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (!carouselRef.current) return;
+    const scrollAmount = 350; // Width of one card + gap
+    const newPosition = carouselRef.current.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+    carouselRef.current.scrollTo({ left: newPosition, behavior: 'smooth' });
+  };
+
   return (
     <section id="marketplace" className="py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -286,11 +295,38 @@ export function AssetMarketplace() {
           </span>
         </div>
 
-        {/* Asset Grid — suppressHydrationWarning: server has 0 real pools, client reads localStorage */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" suppressHydrationWarning>
-          {filteredAssets.map((asset) => (
-            <AssetCard key={asset.id} asset={asset} onSelect={setSelectedAsset} />
-          ))}
+        {/* Horizontal Carousel with Navigation Arrows */}
+        <div className="relative group">
+          {/* Left Arrow */}
+          <button
+            onClick={() => scrollCarousel('left')}
+            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-border shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#14F195]/10 hover:border-[#14F195]/30"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="w-6 h-6 text-foreground" />
+          </button>
+
+          {/* Right Arrow */}
+          <button
+            onClick={() => scrollCarousel('right')}
+            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-border shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#14F195]/10 hover:border-[#14F195]/30"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="w-6 h-6 text-foreground" />
+          </button>
+
+          {/* Carousel Container */}
+          <div
+            ref={carouselRef}
+            className="flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            suppressHydrationWarning
+          >
+            {filteredAssets.map((asset) => (
+              <div key={asset.id} className="flex-shrink-0 w-[280px] sm:w-[320px] snap-start">
+                <AssetCard asset={asset} onSelect={setSelectedAsset} />
+              </div>
+            ))}
+          </div>
         </div>
 
         {filteredAssets.length === 0 && (

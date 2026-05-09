@@ -8,21 +8,21 @@
     "disconnectWallet": "Disconnect"
   },
   "hero": {
-    "badge": "Colosseum Hackathon 2026",
-    "headline": "High-potential real estate.",
-    "headlineAccent": "Real returns.",
-    "subheadline": "We acquire auctioned properties, renovate with full on-chain tracking, and distribute sale profits in cycles of up to 6 months. Total transparency, no intermediaries.",
-    "ctaPrimary": "Explore Assets",
-    "ctaSecondary": "I'm a Builder",
-    "statRoi": "ROI per Cycle",
+    "badge": "⚡ Powered by Solana",
+    "headline": "Access to auction alpha.",
+    "headlineAccent": "Institutional-grade security.",
+    "subheadline": "Tokenized house flipping with 30-50% safety margins. Pre-funded operators and verifiable on-chain custody. Low tickets, full transparency, and flexible exit via secondary market.",
+    "ctaPrimary": "Explore Pools",
+    "ctaSecondary": "For Operators",
+    "statRoi": "Target ROI",
     "statCycle": "Average Cycle",
     "statCycleValue": "<6 months",
     "statTransparency": "On-chain Transparency",
     "statTVL": "Protocol TVL",
-    "trustLabel": "Protocol Guarantees",
-    "trustOnchain": "Open-source smart contracts",
+    "trustLabel": "How We Deliver",
+    "trustOnchain": "Full transparency on-chain",
     "trustSPE": "Audited SPE custody",
-    "trustOpenSource": "On-chain skin-in-the-game",
+    "trustOpenSource": "Operator skin-in-the-game (5%)",
     "trustSolana": "Auditable on Solscan"
   },
   "marketplace": {
@@ -171,18 +171,23 @@
   "unitEconomics": {
     "badge": "Unit Economics",
     "title": "How Profit is Generated",
-    "description": "Simple and transparent model: buy low, renovate fast, sell at a premium.",
+    "description": "The margin of safety is massive: buying 30-50% below market creates a buffer so large that even worst-case scenarios stay profitable.",
     "step1Title": "Buy Low",
-    "step1Description": "Auctioned properties or distressed real estate",
+    "step1Description": "Properties at auction 30-50% below market value",
     "step2Title": "Swift Renovation",
     "step2Description": "Fast execution with on-chain Proof of Build",
     "step3Title": "Premium Exit",
     "step3Description": "Sell at renovated market value",
+    "beforeLabel": "Before",
+    "afterLabel": "After",
+    "interiorTransform": "Interior transformation",
+    "exteriorTransform": "Exterior transformation",
     "profitTitle": "Profit Distribution",
     "grossProfit": "Gross Profit",
     "netProfit": "Net Profit (after costs)",
-    "investorShare": "Investors (90%)",
-    "protocolFee": "Protocol (10%)",
+    "investorShare": "Investors",
+    "operatorShare": "Operator",
+    "protocolFee": "Protocol",
     "roiPrefix": "Investor ROI:",
     "roiSuffix": "in <6 months"
   },
@@ -381,7 +386,7 @@
       },
       "fees": {
         "q": "What are the fees?",
-        "a": "1% on the investment (protocol fee, deducted at purchase) + Solana gas (a few cents per transaction). No hidden fees, no performance fee on exit."
+        "a": "The protocol charges 20% of net profit when the property is sold (success fee only). Investors receive 60%, operators 20%, and the protocol 20%. Solana gas fees are minimal (a few cents). No upfront fees, no hidden costs."
       }
     }
   },

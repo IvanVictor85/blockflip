@@ -8,21 +8,21 @@
     "disconnectWallet": "Desconectar"
   },
   "hero": {
-    "badge": "Colosseum Hackathon 2026",
-    "headline": "Inmuebles de alto potencial.",
-    "headlineAccent": "Rendimientos reales.",
-    "subheadline": "Adquirimos propiedades en subasta, las reformamos con seguimiento on-chain y distribuimos las ganancias de la venta en ciclos de hasta 6 meses. Transparencia total, sin intermediarios.",
-    "ctaPrimary": "Explorar Activos",
-    "ctaSecondary": "Soy Constructor",
-    "statRoi": "ROI por Ciclo",
+    "badge": "⚡ Powered by Solana",
+    "headline": "Acceso al alpha de las subastas.",
+    "headlineAccent": "Seguridad institucional.",
+    "subheadline": "House flipping tokenizado con 30-50% de margen de seguridad. Operadores pre-capitalizados y custodia verificable on-chain. Tickets bajos, transparencia total y salida flexible vía mercado secundario.",
+    "ctaPrimary": "Explorar Pools",
+    "ctaSecondary": "Para Operadores",
+    "statRoi": "ROI Objetivo",
     "statCycle": "Ciclo Medio",
     "statCycleValue": "<6 meses",
     "statTransparency": "Transparencia On-chain",
     "statTVL": "TVL del Protocolo",
-    "trustLabel": "Garantías del protocolo",
-    "trustOnchain": "Smart contracts open-source",
+    "trustLabel": "Cómo Lo Entregamos",
+    "trustOnchain": "Transparencia total on-chain",
     "trustSPE": "Custodia en SPE auditada",
-    "trustOpenSource": "Skin-in-the-game on-chain",
+    "trustOpenSource": "Operador con skin-in-the-game (5%)",
     "trustSolana": "Auditable en Solscan"
   },
   "marketplace": {
@@ -171,18 +171,23 @@
   "unitEconomics": {
     "badge": "Unit Economics",
     "title": "Cómo se Genera el Beneficio",
-    "description": "Modelo simple y transparente: compramos barato, reformamos rápido, vendemos con prima.",
+    "description": "El margen de seguridad es masivo: comprar 30-50% por debajo del mercado crea un colchón tan grande que incluso escenarios pesimistas permanecen rentables.",
     "step1Title": "Compra Baja",
-    "step1Description": "Inmuebles en subasta o en estado precario",
+    "step1Description": "Propiedades en subasta 30-50% por debajo del valor de mercado",
     "step2Title": "Reforma Ágil",
     "step2Description": "Ejecución rápida con Prueba de Construcción",
     "step3Title": "Salida Premium",
     "step3Description": "Venta al valor de mercado reformado",
+    "beforeLabel": "Antes",
+    "afterLabel": "Después",
+    "interiorTransform": "Transformación interior",
+    "exteriorTransform": "Transformación exterior",
     "profitTitle": "Distribución del Beneficio",
     "grossProfit": "Beneficio Bruto",
     "netProfit": "Beneficio Neto (después de costos)",
-    "investorShare": "Inversores (90%)",
-    "protocolFee": "Protocolo (10%)",
+    "investorShare": "Inversores",
+    "operatorShare": "Operador",
+    "protocolFee": "Protocolo",
     "roiPrefix": "ROI para Inversor:",
     "roiSuffix": "en <6 meses"
   },
@@ -381,7 +386,7 @@
       },
       "fees": {
         "q": "¿Cuáles son las comisiones?",
-        "a": "1% sobre la inversión (comisión del protocolo, descontada en la compra) + gas de Solana (unos centavos por transacción). Sin comisiones ocultas, sin comisión de rendimiento al salir."
+        "a": "El protocolo cobra el 20% del beneficio neto cuando se vende el inmueble (solo success fee). Los inversores reciben el 60%, los operadores el 20% y el protocolo el 20%. Las comisiones de gas de Solana son mínimas (unos centavos). Sin comisiones iniciales, sin costos ocultos."
       }
     }
   },

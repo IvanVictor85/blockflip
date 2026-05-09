@@ -8,21 +8,21 @@
     "disconnectWallet": "Desconectar"
   },
   "hero": {
-    "badge": "Colosseum Hackathon 2026",
-    "headline": "Imóveis de alto potencial.",
-    "headlineAccent": "Retorno real.",
-    "subheadline": "Arrematamos imóveis em leilão, reformamos com rastreamento on-chain e distribuímos o lucro da venda em ciclos de até 6 meses. Transparência total, sem intermediários.",
-    "ctaPrimary": "Explorar Ativos",
-    "ctaSecondary": "Sou Construtor",
-    "statRoi": "ROI por Ciclo",
+    "badge": "⚡ Powered by Solana",
+    "headline": "Acesso ao alpha dos leilões.",
+    "headlineAccent": "Segurança institucional.",
+    "subheadline": "House flipping tokenizado com 30-50% de margem de segurança. Operadores pré-capitalizados e custódia verificável on-chain. Tickets baixos, transparência total e saída flexível via mercado secundário.",
+    "ctaPrimary": "Explorar Pools",
+    "ctaSecondary": "Para Operadores",
+    "statRoi": "ROI Alvo",
     "statCycle": "Ciclo Médio",
     "statCycleValue": "<6 meses",
     "statTransparency": "Transparência On-chain",
     "statTVL": "TVL do Protocolo",
-    "trustLabel": "Garantias do protocolo",
-    "trustOnchain": "Smart contracts open-source",
+    "trustLabel": "Como Entregamos",
+    "trustOnchain": "Transparência total on-chain",
     "trustSPE": "Custódia em SPE auditada",
-    "trustOpenSource": "Skin-in-the-game on-chain",
+    "trustOpenSource": "Operador com skin-in-the-game (5%)",
     "trustSolana": "Auditável no Solscan"
   },
   "marketplace": {
@@ -171,18 +171,23 @@
   "unitEconomics": {
     "badge": "Unit Economics",
     "title": "Como o Lucro é Gerado",
-    "description": "Modelo simples e transparente: compramos barato, reformamos rápido, vendemos com ágio.",
+    "description": "A margem de segurança é massiva: comprar 30-50% abaixo do mercado cria um colchão tão grande que até cenários pessimistas permanecem lucrativos.",
     "step1Title": "Compra Baixa",
-    "step1Description": "Imóveis de leilão ou em estado precário",
+    "step1Description": "Imóveis em leilão 30-50% abaixo do valor de mercado",
     "step2Title": "Reforma Ágil",
     "step2Description": "Execução rápida com Proof of Build",
     "step3Title": "Saída Premium",
     "step3Description": "Venda no valor de mercado reformado",
+    "beforeLabel": "Antes",
+    "afterLabel": "Depois",
+    "interiorTransform": "Transformação interior",
+    "exteriorTransform": "Transformação exterior",
     "profitTitle": "Distribuição do Lucro",
     "grossProfit": "Lucro Bruto",
     "netProfit": "Lucro Líquido (após custos)",
-    "investorShare": "Investidores (90%)",
-    "protocolFee": "Protocolo (10%)",
+    "investorShare": "Investidores",
+    "operatorShare": "Operador",
+    "protocolFee": "Protocolo",
     "roiPrefix": "ROI para Investidor:",
     "roiSuffix": "em <6 meses"
   },
@@ -381,7 +386,7 @@
       },
       "fees": {
         "q": "Quais são as taxas?",
-        "a": "1% sobre o aporte (taxa de protocolo, descontada no momento da compra) + gas da Solana (alguns centavos por transação). Sem taxas escondidas, sem performance fee na saída."
+        "a": "O protocolo cobra 20% do lucro líquido quando o imóvel é vendido (apenas success fee). Investidores recebem 60%, operadores 20% e o protocolo 20%. As taxas de gas da Solana são mínimas (alguns centavos). Sem taxas iniciais, sem custos ocultos."
       }
     }
   },
