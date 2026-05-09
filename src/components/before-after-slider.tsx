@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
@@ -31,17 +32,17 @@ export function BeforeAfterSlider({
   };
 
   const handleMouseDown = () => setIsDragging(true);
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = useCallback(() => setIsDragging(false), []);
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging) return;
     handleMove(e.clientX);
-  };
+  }, [isDragging]);
 
-  const handleTouchMove = (e: TouchEvent) => {
+  const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!isDragging) return;
     handleMove(e.touches[0].clientX);
-  };
+  }, [isDragging]);
 
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
@@ -55,7 +56,7 @@ export function BeforeAfterSlider({
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, handleMouseMove, handleTouchMove, handleMouseUp]);
 
   return (
     <div
@@ -66,11 +67,13 @@ export function BeforeAfterSlider({
     >
       {/* AFTER Image (always visible) */}
       <div className="absolute inset-0">
-        <img
+        <Image
           src={afterImage}
           alt={afterLabel}
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
           draggable={false}
+          priority
         />
       </div>
 
@@ -81,11 +84,13 @@ export function BeforeAfterSlider({
           clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
         }}
       >
-        <img
+        <Image
           src={beforeImage}
           alt={beforeLabel}
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
           draggable={false}
+          priority
         />
       </div>
 
