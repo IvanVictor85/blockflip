@@ -459,11 +459,20 @@ export function InvestmentModal({ asset, open, onOpenChange }: InvestmentModalPr
                 </>
               ) : (
                 <>
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  {canSubmit
-                    ? t('ctaInvest', { amount: state.amountUsdc > 0 ? formatCurrency(state.amountUsdc) : '' })
-                    : t('ctaMinimum', { amount: asset.minInvestment })}
-                  {canSubmit && <ArrowRight className="w-4 h-4 ml-2" />}
+                  {!walletAddress ? (
+                    <>
+                      <Wallet className="w-4 h-4 mr-2" />
+                      {t('connectWallet')}
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUp className="w-4 h-4 mr-2" />
+                      {canSubmit
+                        ? t('ctaInvest', { amount: state.amountUsdc > 0 ? formatCurrency(state.amountUsdc) : '' })
+                        : t('ctaMinimum', { amount: asset.minInvestment })}
+                      {canSubmit && <ArrowRight className="w-4 h-4 ml-2" />}
+                    </>
+                  )}
                 </>
               )}
             </Button>

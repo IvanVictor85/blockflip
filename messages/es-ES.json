@@ -80,6 +80,7 @@
     "feeTokens": "Tokens RWA recibidos",
     "walletConnected": "Wallet",
     "walletNotConnected": "Ninguna wallet conectada",
+    "connectWallet": "Conectar Wallet",
     "ctaInvest": "Invertir {amount} USDC",
     "ctaMinimum": "Mínimo: ${amount} USDC",
     "disclaimer": "Al confirmar, firmas una transacción Solana. Tus tokens se emitirán inmediatamente vía smart contract. Revisa los documentos del activo antes de invertir.",

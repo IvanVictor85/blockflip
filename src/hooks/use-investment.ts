@@ -93,12 +93,21 @@ export function useInvestment(
   const submit = useCallback(async () => {
     const { amountUsdc } = state;
 
+    // ── wallet check (FIRST) ──────────────────────────────────────────────
+    transition('wallet_check');
+
+    if (!walletAddress) {
+      setError('wallet_not_connected');
+      toast.error(t('errorTitle'), { description: errorMessage('wallet_not_connected') });
+      return;
+    }
+
     // ── validation ────────────────────────────────────────────────────────
     transition('validation');
 
     const parsed = investmentSchema.safeParse({
       assetId,
-      walletAddress: walletAddress ?? '',
+      walletAddress,
       amountUsdc,
     });
 
@@ -106,15 +115,6 @@ export function useInvestment(
       const firstIssue = parsed.error.issues[0]?.message ?? t('errors.validation_failed');
       setError('validation_failed', firstIssue);
       toast.error(t('errorTitle'), { description: firstIssue });
-      return;
-    }
-
-    // ── wallet check ──────────────────────────────────────────────────────
-    transition('wallet_check');
-
-    if (!walletAddress) {
-      setError('wallet_not_connected');
-      toast.error(t('errorTitle'), { description: errorMessage('wallet_not_connected') });
       return;
     }
 
@@ -255,7 +255,7 @@ export function useInvestment(
     'validation', 'wallet_check', 'awaiting_signature', 'confirming_on_chain',
   ].includes(state.step);
 
-  const canSubmit = state.step === 'amount_entry' && state.amountUsdc >= minInvestment;
+  const canSubmit = state.step === 'amount_entry' && state.amountUsdc >= minInvestment && !!walletAddress;
 
   return { state, walletAddress, onAmountChange, submit, reset, isProcessing, canSubmit };
 }
