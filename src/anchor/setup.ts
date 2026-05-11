@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const BlockflipIDL = require('./blockflip.json');
 
-export const PROGRAM_ID = new PublicKey('8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T');
+export const PROGRAM_ID = new PublicKey('9rrdPS31RMz51oLDMLrHc2uRZ5kr19qwafdeR7zETvDN');
 
 export { BlockflipIDL };
 

@@ -105,21 +105,20 @@ function SuccessScreen({
   result, onSkinInGame, onGoToDashboard,
 }: {
   result: PoolResult;
-  onSkinInGame: (ata: string, vault: string) => Promise<void>;
+  onSkinInGame: (ata: string) => Promise<void>;
   onGoToDashboard: () => void;
 }) {
   const t = useTranslations('specialist');
   const [skinStep, setSkinStep] = useState<SkinStep>('idle');
   // Pre-fill from pre-generated infra if available
   const [operatorAta, setOperatorAta] = useState(result.preInfra?.ata ?? '');
-  const [poolVault, setPoolVault]     = useState(result.preInfra?.vault ?? '');
 
-  const ready = operatorAta.trim().length > 30 && poolVault.trim().length > 30;
+  const ready = operatorAta.trim().length > 30;
 
   const handleSkin = async () => {
     setSkinStep('loading');
     try {
-      await onSkinInGame(operatorAta.trim(), poolVault.trim());
+      await onSkinInGame(operatorAta.trim());
       setSkinStep('done');
     } catch {
       setSkinStep('idle');
@@ -238,11 +237,10 @@ function SuccessScreen({
                   </p>
                   <div className="space-y-1 text-xs font-mono text-muted-foreground break-all">
                     <p><span className="text-foreground font-medium">ATA:</span> {result.preInfra.ata.slice(0, 12)}…{result.preInfra.ata.slice(-8)}</p>
-                    <p><span className="text-foreground font-medium">Vault:</span> {result.preInfra.vault.slice(0, 12)}…{result.preInfra.vault.slice(-8)}</p>
                   </div>
                 </div>
               ) : (
-                /* Sem infra pré-gerada — campos manuais */
+                /* Sem infra pré-gerada — campo manual */
                 <>
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
                     <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
@@ -255,13 +253,6 @@ function SuccessScreen({
                     <Input id="operatorAta" value={operatorAta}
                       onChange={(e) => setOperatorAta(e.target.value)}
                       placeholder={t('successFieldAtaPlaceholder')} className="font-mono text-xs"
-                      disabled={skinStep === 'loading'} />
-                  </Field>
-                  <Field id="poolVault" label={t('successFieldVault')}
-                    hint={t('successFieldVaultHint')}>
-                    <Input id="poolVault" value={poolVault}
-                      onChange={(e) => setPoolVault(e.target.value)}
-                      placeholder={t('successFieldVaultPlaceholder')} className="font-mono text-xs"
                       disabled={skinStep === 'loading'} />
                   </Field>
                 </>
@@ -330,6 +321,10 @@ export default function SpecialistPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [rpcDown, setRpcDown]             = useState(false);
 
+  // Admin: authorize other wallets
+  const [newSpecialistAddress, setNewSpecialistAddress] = useState('');
+  const [isAuthorizingOther, setIsAuthorizingOther] = useState(false);
+
   useEffect(() => {
     if (!program || !publicKey) { setIsAuthorized(null); setIsAuthority(false); return; }
 
@@ -339,16 +334,53 @@ export default function SpecialistPage() {
     const walletStr  = publicKey.toBase58();
 
     // Distinguish network failure from "account not found"
-    const isNetworkErr = (e: unknown) =>
-      e instanceof TypeError && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'));
+    const isNetworkErr = (e: unknown) => {
+      if (e instanceof TypeError && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))) {
+        return true;
+      }
+      // Also catch common Solana RPC errors
+      if (e instanceof Error) {
+        const msg = e.message.toLowerCase();
+        return msg.includes('network') ||
+               msg.includes('timeout') ||
+               msg.includes('connection') ||
+               msg.includes('fetch') ||
+               msg.includes('unexpected response');
+      }
+      return false;
+    };
+
+    // Retry logic with exponential backoff - only retry network errors
+    const fetchWithRetry = async (fetchFn: () => Promise<unknown>, retries = 3, delay = 1000): Promise<unknown> => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await fetchFn();
+        } catch (err) {
+          const isLastAttempt = i === retries - 1;
+          const shouldRetry = isNetworkErr(err);
+
+          if (!shouldRetry || isLastAttempt) {
+            throw err; // Don't retry non-network errors, or if last attempt
+          }
+
+          console.log(`[BlockFlip] RPC retry ${i + 1}/${retries} after ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; // exponential backoff
+        }
+      }
+      throw new Error('Max retries reached');
+    };
 
     Promise.all([
-      accountApi.specialistRegistry.fetch(registryPda)
+      fetchWithRetry(() => accountApi.specialistRegistry.fetch(registryPda))
         .then(() => 'registered' as const)
         .catch((e: unknown) => isNetworkErr(e) ? 'rpc_down' as const : 'not_found' as const),
 
-      accountApi.protocolState.fetch(protocolStatePda)
-        .then((s: { authority: { toBase58: () => string } }) => s.authority.toBase58() === walletStr)
+      fetchWithRetry(() => accountApi.protocolState.fetch(protocolStatePda))
+        .then((s: unknown) => {
+          const state = s as { authority: { toBase58: () => string } };
+          return state.authority.toBase58() === walletStr;
+        })
         .catch((e: unknown) => { console.warn('[BlockFlip] protocolState fetch failed:', e); return 'rpc_down' as const; }),
     ]).then(([registryResult, authorityResult]) => {
       const networkDown = registryResult === 'rpc_down' || authorityResult === 'rpc_down';
@@ -365,6 +397,12 @@ export default function SpecialistPage() {
       setRpcDown(false);
       setIsAuthorized(registryResult === 'registered');
       setIsAuthority(authorityResult === true);
+    }).catch((err) => {
+      console.error('[BlockFlip] Unexpected error checking authorization:', err);
+      // Fail-safe: assume network down
+      setRpcDown(true);
+      setIsAuthorized(true);
+      setIsAuthority(false);
     });
   }, [program, publicKey, deriveSpecialistRegistryPda, protocolStatePda]);
 
@@ -379,6 +417,30 @@ export default function SpecialistPage() {
       toast.error('Falha na autorização', { description: (err as Error).message?.slice(0, 120) });
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleAuthorizeOther = async () => {
+    if (!newSpecialistAddress.trim()) {
+      toast.error('Digite um endereço de carteira válido');
+      return;
+    }
+    try {
+      new PublicKey(newSpecialistAddress.trim());
+    } catch {
+      toast.error('Endereço de carteira inválido');
+      return;
+    }
+
+    setIsAuthorizingOther(true);
+    try {
+      await authorizeSpecialist(newSpecialistAddress.trim());
+      toast.success(`Carteira ${newSpecialistAddress.slice(0, 8)}...${newSpecialistAddress.slice(-8)} autorizada!`);
+      setNewSpecialistAddress('');
+    } catch (err) {
+      toast.error('Falha ao autorizar especialista', { description: (err as Error).message?.slice(0, 120) });
+    } finally {
+      setIsAuthorizingOther(false);
     }
   };
 
@@ -634,11 +696,11 @@ export default function SpecialistPage() {
   ]);
 
   // ─── Skin-in-Game deposit ────────────────────────────────────────────────
-  const handleSkinInGame = useCallback(async (ata: string, vault: string) => {
+  const handleSkinInGame = useCallback(async (ata: string) => {
     if (!result) return;
     const toastId = toast.loading(t('toastDepositSigning'));
     try {
-      const sig = await depositSkinInGame(result.poolId, ata, vault);
+      const sig = await depositSkinInGame(result.poolId, ata);
       toast.dismiss(toastId);
       toast.success(t('toastPoolActivated'), {
         description: `Pool #${result.poolId} → Funding`,
@@ -733,6 +795,43 @@ export default function SpecialistPage() {
           </div>
         </div>
 
+        {/* Admin Section: Authorize Other Specialists */}
+        {connected && isAuthority && (
+          <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ShieldCheck className="h-5 w-5 text-amber-500" />
+                Admin: Autorizar Especialistas
+              </CardTitle>
+              <CardDescription>
+                Você é a authority do protocolo. Autorize outras carteiras para criar pools.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-3">
+                <Input
+                  placeholder="Endereço da carteira (ex: 9kFiLbNP7iEuH4619Px23SYYAGcjVt4udBfNpkRyc5VU)"
+                  value={newSpecialistAddress}
+                  onChange={(e) => setNewSpecialistAddress(e.target.value)}
+                  disabled={isAuthorizingOther}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleAuthorizeOther}
+                  disabled={isAuthorizingOther || !newSpecialistAddress.trim()}
+                  className="bg-amber-500 hover:bg-amber-600 text-white"
+                >
+                  {isAuthorizingOther ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Autorizando...</>
+                  ) : (
+                    <><ShieldCheck className="h-4 w-4 mr-2" />Autorizar</>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Wallet banner */}
         {!connected ? (
           <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
@@ -792,8 +891,8 @@ export default function SpecialistPage() {
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <Images className="h-4 w-4 text-[#14F195]" />
-                  Fotos do Imóvel
-                  <span className="text-xs text-muted-foreground font-normal">(opcional · até 8 fotos)</span>
+                  {t('fieldPhotos')}
+                  <span className="text-xs text-muted-foreground font-normal">{t('fieldPhotosOptional')}</span>
                 </label>
                 <ImageUploader
                   onChange={setImageFiles}
@@ -825,7 +924,7 @@ export default function SpecialistPage() {
                         : 'bg-background border-border text-muted-foreground hover:border-[#14F195]/40'
                     }`}
                   >
-                    {type === 'DIRECT_PURCHASE' ? '🤝 Compra Direta' : '🔨 Arremate (Leilão)'}
+                    {type === 'DIRECT_PURCHASE' ? t('operationDirect') : t('operationAuction')}
                   </button>
                 ))}
               </div>
@@ -833,12 +932,12 @@ export default function SpecialistPage() {
               {/* Cost Breakdown */}
               <div className="rounded-xl border border-dashed border-border p-4 flex flex-col gap-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Detalhamento de Custos
+                  {t('costBreakdownTitle')}
                 </p>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <Field id="acquisitionCost"
-                    label={operationType === 'AUCTION' ? 'Teto do Arremate' : 'Valor de Compra'}
-                    hint={operationType === 'AUCTION' ? 'Lance máximo aceitável' : 'Valor negociado com o vendedor'}>
+                    label={operationType === 'AUCTION' ? t('fieldAcquisitionAuction') : t('fieldAcquisitionDirect')}
+                    hint={operationType === 'AUCTION' ? t('hintAcquisitionAuction') : t('hintAcquisitionDirect')}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
                       <Input id="acquisitionCost" type="number" min="1" step="any"
@@ -847,7 +946,7 @@ export default function SpecialistPage() {
                         className="pl-7" disabled={isLoading} />
                     </div>
                   </Field>
-                  <Field id="renovationCost" label="Reforma (Capex)" hint="Custo estimado de obra">
+                  <Field id="renovationCost" label={t('fieldRenovation')} hint={t('hintRenovation')}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
                       <Input id="renovationCost" type="number" min="0" step="any" placeholder="30000"
@@ -855,7 +954,7 @@ export default function SpecialistPage() {
                         className="pl-7" disabled={isLoading} />
                     </div>
                   </Field>
-                  <Field id="legalCost" label="Docs / Taxas" hint="Documentação e custos legais">
+                  <Field id="legalCost" label={t('fieldLegal')} hint={t('hintLegal')}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">$</span>
                       <Input id="legalCost" type="number" min="0" step="any" placeholder="10000"
@@ -867,7 +966,7 @@ export default function SpecialistPage() {
                 {/* Calculated total + SiG indicator */}
                 <div className="pt-1 border-t border-border space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Total a captar (calculado)</span>
+                    <span className="text-xs text-muted-foreground">{t('totalToRaise')}</span>
                     <span className={`text-sm font-bold tabular-nums ${calculatedTargetCapital > 0 ? 'text-[#14F195]' : 'text-muted-foreground'}`}>
                       {calculatedTargetCapital > 0
                         ? `$${calculatedTargetCapital.toLocaleString('en-US')}`

@@ -18,7 +18,7 @@ use anchor_spl::{
     token::{self, Mint, Token, TokenAccount, Transfer},
 };
 
-declare_id!("8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T");
+declare_id!("9rrdPS31RMz51oLDMLrHc2uRZ5kr19qwafdeR7zETvDN");
 
 // ─── PDA Seeds ───────────────────────────────────────────────────────────────
 const PROTOCOL_SEED: &[u8]   = b"blockflip_v1";
@@ -81,7 +81,24 @@ pub mod blockflip {
         Ok(())
     }
 
-    // ── 3. create_pool ────────────────────────────────────────────────────────
+    // ── 3. transfer_authority ─────────────────────────────────────────────────
+    // Permite que a authority atual transfira a authority para uma nova carteira.
+    pub fn transfer_authority(
+        ctx: Context<TransferAuthority>,
+        new_authority: Pubkey,
+    ) -> Result<()> {
+        let state = &mut ctx.accounts.protocol_state;
+        let old_authority = state.authority;
+        state.authority = new_authority;
+
+        msg!(
+            "Authority transferred from {} to {}",
+            old_authority, new_authority
+        );
+        Ok(())
+    }
+
+    // ── 4. create_pool ────────────────────────────────────────────────────────
     // Cria um Pool em status Pending.
     // Requer que o operator possua um SpecialistRegistry aprovado.
     // Pool só abre para investidores após o Especialista depositar 5% (skin in game).
@@ -625,6 +642,19 @@ pub struct AuthorizeSpecialist<'info> {
     pub authority: Signer<'info>,
 
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct TransferAuthority<'info> {
+    #[account(
+        mut,
+        seeds = [PROTOCOL_SEED],
+        bump  = protocol_state.bump,
+        has_one = authority @ BlockFlipError::Unauthorized,
+    )]
+    pub protocol_state: Account<'info, ProtocolState>,
+
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]

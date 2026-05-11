@@ -140,8 +140,7 @@ export function useInvestment(
         const sig = await anchorInvest(
           blockchainParams.poolId,
           amountUsdc,
-          blockchainParams.investorTokenAccount,
-          blockchainParams.poolVault,
+          blockchainParams.investorTokenAccount
         );
 
         transition('success', { txSignature: sig });

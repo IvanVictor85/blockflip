@@ -114,10 +114,8 @@ export default function TestDrivePage() {
   const handleSetupComplete = useCallback((result: SetupResult) => {
     setCpMint(result.mint);
     setSigTokenAcc(result.walletTokenAccount);
-    setSigVault(result.poolVault);
     setSigPoolId(String(result.poolId));
     setInvTokenAcc(result.walletTokenAccount);
-    setInvVault(result.poolVault);
     setInvPoolId(String(result.poolId));
   }, []);
 
@@ -204,7 +202,6 @@ export default function TestDrivePage() {
   // ── Deposit Skin in Game ──────────────────────────────────────────────────
   const [sigPoolId, setSigPoolId] = useState('');
   const [sigTokenAcc, setSigTokenAcc] = useState('');
-  const [sigVault, setSigVault] = useState('');
   const [loadingSig, setLoadingSig] = useState(false);
 
   const handleDepositSkin = useCallback(async () => {
@@ -212,8 +209,7 @@ export default function TestDrivePage() {
     try {
       const sig = await depositSkinInGame(
         parseInt(sigPoolId, 10),
-        sigTokenAcc.trim(),
-        sigVault.trim()
+        sigTokenAcc.trim()
       );
       log('ok', `Skin-in-game depositado — pool #${sigPoolId}`, sig);
     } catch (e: unknown) {
@@ -221,13 +217,12 @@ export default function TestDrivePage() {
     } finally {
       setLoadingSig(false);
     }
-  }, [depositSkinInGame, sigPoolId, sigTokenAcc, sigVault, log]);
+  }, [depositSkinInGame, sigPoolId, sigTokenAcc, log]);
 
   // ── Invest ────────────────────────────────────────────────────────────────
   const [invPoolId, setInvPoolId] = useState('');
   const [invAmount, setInvAmount] = useState('');
   const [invTokenAcc, setInvTokenAcc] = useState('');
-  const [invVault, setInvVault] = useState('');
   const [loadingInv, setLoadingInv] = useState(false);
 
   const handleInvest = useCallback(async () => {
@@ -236,8 +231,7 @@ export default function TestDrivePage() {
       const sig = await invest(
         parseInt(invPoolId, 10),
         parseInt(invAmount, 10),
-        invTokenAcc.trim(),
-        invVault.trim()
+        invTokenAcc.trim()
       );
       log('ok', `Aporte realizado — pool #${invPoolId}, amount: ${invAmount}`, sig);
     } catch (e: unknown) {
@@ -245,7 +239,7 @@ export default function TestDrivePage() {
     } finally {
       setLoadingInv(false);
     }
-  }, [invest, invPoolId, invAmount, invTokenAcc, invVault, log]);
+  }, [invest, invPoolId, invAmount, invTokenAcc, log]);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -415,16 +409,10 @@ export default function TestDrivePage() {
             onChange={setSigTokenAcc}
             placeholder="Pubkey da token account do operador"
           />
-          <Field
-            label="Pool Vault"
-            value={sigVault}
-            onChange={setSigVault}
-            placeholder="Pubkey da vault do pool"
-          />
           <ActionButton
             onClick={handleDepositSkin}
             loading={loadingSig}
-            disabled={!isConnected || sigPoolId === '' || !sigTokenAcc || !sigVault}
+            disabled={!isConnected || sigPoolId === '' || !sigTokenAcc}
           >
             Depositar Skin-in-Game →
           </ActionButton>
@@ -452,16 +440,10 @@ export default function TestDrivePage() {
             onChange={setInvTokenAcc}
             placeholder="Pubkey da token account do investidor"
           />
-          <Field
-            label="Pool Vault"
-            value={invVault}
-            onChange={setInvVault}
-            placeholder="Pubkey da vault do pool"
-          />
           <ActionButton
             onClick={handleInvest}
             loading={loadingInv}
-            disabled={!isConnected || !invPoolId || !invAmount || !invTokenAcc || !invVault}
+            disabled={!isConnected || !invPoolId || !invAmount || !invTokenAcc}
           >
             Investir →
           </ActionButton>

@@ -1,5 +1,5 @@
 {
-  "address": "8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T",
+  "address": "9rrdPS31RMz51oLDMLrHc2uRZ5kr19qwafdeR7zETvDN",
   "metadata": {
     "name": "blockflip",
     "version": "0.1.0",
@@ -887,6 +887,59 @@
               32
             ]
           }
+        }
+      ]
+    },
+    {
+      "name": "transfer_authority",
+      "discriminator": [
+        48,
+        169,
+        76,
+        72,
+        229,
+        180,
+        55,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "protocol_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  111,
+                  99,
+                  107,
+                  102,
+                  108,
+                  105,
+                  112,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "protocol_state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
         }
       ]
     }

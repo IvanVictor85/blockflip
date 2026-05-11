@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-blockflip = "8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T"
+blockflip = "9rrdPS31RMz51oLDMLrHc2uRZ5kr19qwafdeR7zETvDN"
 
 [programs.devnet]
-blockflip = "8HJ9DeCCPsvadP45ironJLS2uq7WVa6wfrBLf3VxAE5T"
+blockflip = "9rrdPS31RMz51oLDMLrHc2uRZ5kr19qwafdeR7zETvDN"
 
 [registry]
 url = "https://api.apr.dev"

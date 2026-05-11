@@ -56,7 +56,7 @@ function storedPoolToAsset(p: StoredPool): Asset {
     status: 'arremate' as AssetStatus,
     acquisitionPrice: p.acquisitionCost ?? Math.round(p.fundingGoal * 0.65),
     targetSalePrice: p.targetSalePrice || Math.round(p.fundingGoal * 1.3),
-    estimatedROI: p.roi.base,
+    estimatedROI: p.roi?.base ?? 0,
     cycleDays: p.cycleDays,
     currentDay: daysSinceCreation,
     fundingGoal: p.fundingGoal,
