@@ -70,7 +70,14 @@ export function useBlockFlip() {
     async (specialistPubkeyStr: string): Promise<string> => {
       if (!program || !wallet) throw new Error('Wallet not connected');
 
-      const specialistPubkey = new PublicKey(specialistPubkeyStr);
+      // SECURITY: Validate PublicKey format before use
+      let specialistPubkey: PublicKey;
+      try {
+        specialistPubkey = new PublicKey(specialistPubkeyStr);
+      } catch {
+        throw new Error('Invalid specialist public key format');
+      }
+
       const [specialistRegistry] = PublicKey.findProgramAddressSync(
         [SPECIALIST_SEED, specialistPubkey.toBuffer()],
         PROGRAM_ID
@@ -117,7 +124,14 @@ export function useBlockFlip() {
         [SPECIALIST_SEED, wallet.publicKey.toBuffer()],
         PROGRAM_ID
       );
-      const acceptedMint = new PublicKey(acceptedMintStr);
+
+      // SECURITY: Validate mint address format before use
+      let acceptedMint: PublicKey;
+      try {
+        acceptedMint = new PublicKey(acceptedMintStr);
+      } catch {
+        throw new Error('Invalid accepted mint address format');
+      }
 
       let sig: string;
       try {
@@ -163,7 +177,14 @@ export function useBlockFlip() {
     async (poolStatePda: PublicKey, acceptedMintStr: string): Promise<string> => {
       if (!program || !wallet) throw new Error('Wallet not connected');
 
-      const acceptedMint = new PublicKey(acceptedMintStr);
+      // SECURITY: Validate mint address format before use
+      let acceptedMint: PublicKey;
+      try {
+        acceptedMint = new PublicKey(acceptedMintStr);
+      } catch {
+        throw new Error('Invalid accepted mint address format');
+      }
+
       const [poolVaultPda] = PublicKey.findProgramAddressSync(
         [VAULT_SEED, poolStatePda.toBuffer()],
         PROGRAM_ID
@@ -204,8 +225,7 @@ export function useBlockFlip() {
   const depositSkinInGame = useCallback(
     async (
       poolId: number,
-      operatorTokenAccountStr: string,
-      poolVaultStr: string
+      operatorTokenAccountStr: string
     ): Promise<string> => {
       if (!program || !wallet) throw new Error('Wallet not connected');
 
@@ -217,6 +237,11 @@ export function useBlockFlip() {
         [POSITION_SEED, poolStatePda.toBuffer(), wallet.publicKey.toBuffer()],
         PROGRAM_ID
       );
+      // SECURITY: Derive pool_vault as PDA to match Anchor constraint
+      const [poolVaultPda] = PublicKey.findProgramAddressSync(
+        [VAULT_SEED, poolStatePda.toBuffer()],
+        PROGRAM_ID
+      );
 
       let sig: string;
       try {
@@ -226,7 +251,7 @@ export function useBlockFlip() {
             poolState: poolStatePda,
             investorPosition: investorPositionPda,
             operatorTokenAccount: new PublicKey(operatorTokenAccountStr),
-            poolVault: new PublicKey(poolVaultStr),
+            poolVault: poolVaultPda,
             operator: wallet.publicKey,
           })
           .rpc({ commitment: 'confirmed' });
@@ -250,8 +275,7 @@ export function useBlockFlip() {
     async (
       poolId: number,
       amount: number,
-      investorTokenAccountStr: string,
-      poolVaultStr: string
+      investorTokenAccountStr: string
     ): Promise<string> => {
       if (!program || !wallet) throw new Error('Wallet not connected');
 
@@ -263,6 +287,11 @@ export function useBlockFlip() {
         [POSITION_SEED, poolStatePda.toBuffer(), wallet.publicKey.toBuffer()],
         PROGRAM_ID
       );
+      // SECURITY: Derive pool_vault as PDA to match Anchor constraint
+      const [poolVaultPda] = PublicKey.findProgramAddressSync(
+        [VAULT_SEED, poolStatePda.toBuffer()],
+        PROGRAM_ID
+      );
 
       const sig = await program.methods
         .invest(new BN(Math.round(amount * 10 ** TOKEN_DECIMALS)))
@@ -270,7 +299,7 @@ export function useBlockFlip() {
           poolState: poolStatePda,
           investorPosition: investorPositionPda,
           investorTokenAccount: new PublicKey(investorTokenAccountStr),
-          poolVault: new PublicKey(poolVaultStr),
+          poolVault: poolVaultPda,
           investor: wallet.publicKey,
         })
         .rpc({ commitment: 'confirmed' });
@@ -294,11 +323,65 @@ export function useBlockFlip() {
     []
   );
 
+  // ── fetchPoolState ─────────────────────────────────────────────────────────
+  // Fetch pool state from on-chain given the pool PDA
+  const fetchPoolState = useCallback(
+    async (poolPda: PublicKey) => {
+      if (!program) throw new Error('Wallet not connected');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const state = await (program.account as any).poolState.fetch(poolPda);
+      return state as { poolId: BN; skinInGameDeposited: BN };
+    },
+    [program]
+  );
+
+  // ── checkSkinInGameDeposited ───────────────────────────────────────────────
+  // Check if operator already deposited skin-in-game by checking if investorPosition exists
+  const checkSkinInGameDeposited = useCallback(
+    async (poolStatePda: PublicKey, operatorPubkey: PublicKey): Promise<boolean> => {
+      if (!program) {
+        console.log('[checkSkinInGameDeposited] No program, returning false');
+        return false;
+      }
+      try {
+        const [investorPositionPda] = PublicKey.findProgramAddressSync(
+          [POSITION_SEED, poolStatePda.toBuffer(), operatorPubkey.toBuffer()],
+          PROGRAM_ID
+        );
+        console.log('[checkSkinInGameDeposited] Checking PDA:', investorPositionPda.toBase58());
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const position = await (program.account as any).investorPosition.fetch(investorPositionPda);
+
+        // If account exists on-chain, deposit was confirmed (even if amount is 0)
+        // The 0x0 error "account already in use" proves the account exists
+        const exists = position !== null;
+        const amount = position?.amount?.toNumber() ?? 0;
+
+        console.log('[checkSkinInGameDeposited] Position found:', {
+          exists,
+          amount,
+          pdaExists: exists,
+          position: position ? 'YES' : 'NO',
+        });
+
+        return exists;
+      } catch (err) {
+        console.error('[checkSkinInGameDeposited] Error fetching position:', err);
+        console.error('[checkSkinInGameDeposited] Error message:', (err as Error)?.message);
+        return false; // Account doesn't exist = not deposited
+      }
+    },
+    [program]
+  );
+
   return {
     program,
     wallet,
     protocolStatePda,
     fetchProtocolState,
+    fetchPoolState,
+    checkSkinInGameDeposited,
     authorizeSpecialist,
     createPool,
     initializePoolVault,

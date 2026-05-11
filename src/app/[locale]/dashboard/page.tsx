@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import {
   TrendingUp,
   Wallet,
@@ -29,6 +31,7 @@ import { isAllowedImageUrl } from '@/lib/security';
 import { useBlockFlip } from '@/hooks/useBlockFlip';
 import { getPoolsAction } from '@/actions/pool';
 import { getInvestmentsAction } from '@/actions/investment';
+import { PROGRAM_ID } from '@/anchor/setup';
 
 // ─── Stored Investment (from localStorage) ───────────────────────────────────
 
@@ -118,18 +121,69 @@ interface DisplayPool {
 // ─── Read localStorage once on mount ─────────────────────────────────────────
 
 function readAllPools(): OperatorPool[] {
-  try { return JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]'); }
-  catch { return []; }
+  try {
+    // Auto-clear localStorage after program redeploy (program ID changes = all PDAs invalid)
+    const LAST_PROGRAM_ID_KEY = 'blockflip_last_program_id';
+    const currentProgramId = PROGRAM_ID.toBase58();
+    const lastProgramId = localStorage.getItem(LAST_PROGRAM_ID_KEY);
+
+    if (lastProgramId && lastProgramId !== currentProgramId) {
+      console.log('[readAllPools] Program ID changed! Clearing old pools:', lastProgramId, '→', currentProgramId);
+      localStorage.removeItem('blockflip_pools');
+      localStorage.setItem(LAST_PROGRAM_ID_KEY, currentProgramId);
+      return [];
+    }
+
+    if (!lastProgramId) {
+      localStorage.setItem(LAST_PROGRAM_ID_KEY, currentProgramId);
+    }
+
+    const pools = JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]');
+    console.log('[readAllPools] Read', pools.length, 'pools from localStorage');
+    pools.forEach((p: OperatorPool) => {
+      console.log('  -', p.poolStatePda.slice(0, 8), 'sigDepositTx:', p.sigDepositTx ? 'YES' : 'NO');
+    });
+    return pools;
+  } catch {
+    return [];
+  }
 }
 
-function persistSigDeposit(poolStatePda: string, depositSig: string): void {
+function persistSigDeposit(poolStatePda: string, depositSig: string, operator: string): void {
   try {
     const pools: OperatorPool[] = JSON.parse(localStorage.getItem('blockflip_pools') ?? '[]');
-    const updated = pools.map((p) =>
-      p.poolStatePda === poolStatePda ? { ...p, sigDepositTx: depositSig } : p
-    );
-    localStorage.setItem('blockflip_pools', JSON.stringify(updated));
-  } catch { /* non-fatal */ }
+    const poolIndex = pools.findIndex((p) => p.poolStatePda === poolStatePda);
+
+    if (poolIndex >= 0) {
+      // Pool exists in localStorage — update it
+      const updated = pools.map((p) =>
+        p.poolStatePda === poolStatePda ? { ...p, sigDepositTx: depositSig } : p
+      );
+      localStorage.setItem('blockflip_pools', JSON.stringify(updated));
+      console.log('[persistSigDeposit] Updated existing pool:', poolStatePda, 'sig:', depositSig);
+    } else {
+      // Pool not in localStorage (created via DB-only flow) — create minimal entry
+      pools.push({
+        poolId: undefined as unknown as number,
+        poolStatePda,
+        name: `Pool ${poolStatePda.slice(0, 6)}...`,
+        location: '',
+        description: '',
+        imageUrl: '',
+        cycleDays: 0,
+        fundingGoal: 0,
+        targetSalePrice: 0,
+        roi: { conservador: 0, base: 0, otimista: 0 },
+        operator, // ← FIX: use correct operator
+        createdAt: new Date().toISOString(),
+        sigDepositTx: depositSig,
+      });
+      localStorage.setItem('blockflip_pools', JSON.stringify(pools));
+      console.log('[persistSigDeposit] Created new minimal entry:', poolStatePda, 'operator:', operator, 'sig:', depositSig);
+    }
+  } catch (err) {
+    console.error('[persistSigDeposit] Error:', err);
+  }
 }
 
 function localToDisplay(p: OperatorPool): DisplayPool {
@@ -407,42 +461,91 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
   const { depositSkinInGame } = useBlockFlip();
 
   const handleDepositSig = async () => {
-    if (!pool.poolId || !pool.operatorAta || !pool.vault) return;
+    console.log('[handleDepositSig] Button clicked!', {
+      poolId: pool.poolId,
+      operatorAta: pool.operatorAta,
+      hasPoolId: pool.poolId !== null && pool.poolId !== undefined,
+      hasOperatorAta: !!pool.operatorAta,
+    });
+
+    if (!pool.poolId && pool.poolId !== 0) {
+      console.error('[handleDepositSig] Missing poolId, aborting');
+      return;
+    }
+    if (!pool.operatorAta) {
+      console.error('[handleDepositSig] Missing operatorAta, aborting');
+      return;
+    }
+
+    console.log('[handleDepositSig] Calling depositSkinInGame with:', {
+      poolId: pool.poolId,
+      operatorAta: pool.operatorAta,
+    });
+
     setIsDepositing(true);
     const toastId = toast.loading(t('sigToastLoading'));
 
     const handleSuccess = (sig: string) => {
-      persistSigDeposit(pool.poolStatePda, sig || 'recovered');
+      console.log('[handleSuccess] Called with signature:', sig);
+      console.log('[handleSuccess] Persisting to localStorage...');
+      console.log('[handleSuccess] Pool PDA:', pool.poolStatePda, 'Pool Name:', pool.name);
+      persistSigDeposit(pool.poolStatePda, sig || 'recovered', pool.operator);
+      console.log('[handleSuccess] Showing success toast...');
       toast.success(t('sigToastSuccess'), {
         id: toastId,
         description: t('sigToastSuccessDesc', { poolId: pool.poolId ?? '?' }),
         ...(sig ? { action: { label: 'Explorer', onClick: () => openExternalUrl(getExplorerTxUrl(sig)) } } : {}),
         duration: 8_000,
       });
+      console.log('[handleSuccess] Calling onSigDeposited callback...');
       onSigDeposited?.();
+      console.log('[handleSuccess] Done!');
     };
 
     try {
-      const sig = await depositSkinInGame(pool.poolId, pool.operatorAta, pool.vault);
+      const sig = await depositSkinInGame(pool.poolId, pool.operatorAta);
+      console.log('[handleDepositSig] Transaction successful! Signature:', sig);
       handleSuccess(sig);
     } catch (err: unknown) {
+      console.error('[handleDepositSig] Transaction failed:', err);
       const msg = (err as Error)?.message ?? '';
-      // 0x0 = System Program AccountAlreadyInUse — investorPosition PDA already
-      // exists, meaning a previous SiG deposit was confirmed. Treat as success.
-      if (msg.includes('custom program error: 0x0') || msg.includes('already been processed')) {
+      // 0x0 = System Program AccountAlreadyInUse — investorPosition PDA already exists.
+      // Can happen from simulation OR actual transaction error. Treat as success.
+      if (msg.includes('custom program error: 0x0') ||
+          msg.includes('Simulation failed') ||
+          msg.includes('already been processed') ||
+          msg.includes('already in use')) {
+        console.log('[handleDepositSig] Account already exists (deposit confirmed), treating as success');
         const match = msg.match(/[1-9A-HJ-NP-Za-km-z]{87,88}/);
         handleSuccess(match ? match[0] : '');
         return;
       }
+      console.error('[handleDepositSig] Showing error toast:', msg.slice(0, 120));
       toast.error(t('sigDepositTitle'), { id: toastId, description: msg.slice(0, 120) });
     } finally {
+      console.log('[handleDepositSig] Finished, setIsDepositing(false)');
       setIsDepositing(false);
     }
   };
 
   // Hide button once SiG is confirmed (either via DB skinInGame or localStorage sigDepositTx)
-  const needsSig = !pool.sigDepositTx && pool.skinInGame === 0
-    && Boolean(pool.poolId) && Boolean(pool.vault) && Boolean(pool.operatorAta);
+  const hasPoolId = pool.poolId !== null && pool.poolId !== undefined;
+  const hasSigDepositTx = pool.sigDepositTx !== undefined && pool.sigDepositTx !== null;
+  const needsSig = !hasSigDepositTx && pool.skinInGame === 0
+    && hasPoolId && Boolean(pool.operatorAta);
+
+  console.log('[OperatorPoolCard] Button visibility check:', pool.name, {
+    poolStatePda: pool.poolStatePda.slice(0, 8),
+    poolId: pool.poolId,
+    sigDepositTx: pool.sigDepositTx,
+    skinInGame: pool.skinInGame,
+    operatorAta: pool.operatorAta?.slice(0, 8),
+    hasPoolId,
+    hasSigDepositTx,
+    needsSig,
+    buttonWillShow: needsSig,
+  });
+
   const statusKey: keyof typeof poolStatusConfig = needsSig ? 'pending' : 'funding';
   const cfg = poolStatusConfig[statusKey];
   const createdDate = new Date(pool.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
@@ -462,7 +565,7 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
   // If the operator already deposited (sigDepositTx present), derive 5% from fundingGoal.
   const effectiveSkinInGame = pool.skinInGame > 0
     ? pool.skinInGame
-    : pool.sigDepositTx
+    : (pool.sigDepositTx !== undefined && pool.sigDepositTx !== null)
       ? Math.round(pool.fundingGoal * 0.05)
       : 0;
 
@@ -631,12 +734,17 @@ function OperatorPoolCard({ pool, onSigDeposited }: { pool: DisplayPool; onSigDe
 export default function DashboardPage() {
   const { publicKey } = useWallet();
   const t = useTranslations('dashboard');
+  const { fetchPoolState, checkSkinInGameDeposited, program } = useBlockFlip();
 
   type DbPool = Extract<Awaited<ReturnType<typeof getPoolsAction>>, { success: true }>['data'][number];
   // DB pools fetched asynchronously
   const [dbPools, setDbPools] = useState<DbPool[]>([]);
   // Bumped after persistSigDeposit so the memo re-reads localStorage immediately
   const [localVersion, setLocalVersion] = useState(0);
+  // On-chain poolIds fetched when missing from localStorage/DB
+  const [onChainPoolIds, setOnChainPoolIds] = useState<Record<string, number>>({});
+  // On-chain SiG deposit status (source of truth)
+  const [sigDepositStatus, setSigDepositStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!publicKey) return;
@@ -646,6 +754,116 @@ export default function DashboardPage() {
       setDbPools(res.data.filter((p) => p.specialist.walletAddress === wallet));
     });
   }, [publicKey]);
+
+  // Fetch missing poolIds from on-chain (PARALLEL for performance)
+  useEffect(() => {
+    if (!program || !publicKey || !fetchPoolState) return;
+
+    const fetchMissingPoolIds = async () => {
+      const localPools = readAllPools().filter((p) => p.operator === publicKey.toBase58());
+
+      // Filter pools that need fetching
+      const poolsToFetch = dbPools.filter((dbPool) => {
+        const local = localPools.find((lp) => lp.poolStatePda === dbPool.poolPda);
+        return local?.poolId === undefined && onChainPoolIds[dbPool.poolPda] === undefined;
+      });
+
+      if (poolsToFetch.length === 0) return;
+
+      console.log('[Dashboard] Fetching poolIds in parallel for', poolsToFetch.length, 'pools');
+
+      // Fetch ALL pools in PARALLEL using Promise.all
+      const results = await Promise.allSettled(
+        poolsToFetch.map(async (dbPool) => {
+          const poolPda = new PublicKey(dbPool.poolPda);
+          const poolState = await fetchPoolState(poolPda);
+          const poolId = poolState.poolId.toNumber();
+          return { poolPda: dbPool.poolPda, poolId, name: dbPool.name };
+        })
+      );
+
+      // Update state with all successful fetches
+      const newPoolIds: Record<string, number> = {};
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          const { poolPda, poolId, name } = result.value;
+          console.log('[Dashboard] ✅ Fetched poolId:', name, poolId);
+          newPoolIds[poolPda] = poolId;
+        } else {
+          console.error('[Dashboard] ❌ Failed to fetch poolId for', poolsToFetch[idx].poolPda, result.reason);
+        }
+      });
+
+      if (Object.keys(newPoolIds).length > 0) {
+        setOnChainPoolIds((prev) => ({ ...prev, ...newPoolIds }));
+      }
+    };
+
+    if (dbPools.length > 0) {
+      fetchMissingPoolIds();
+    }
+  }, [dbPools, fetchPoolState, publicKey, onChainPoolIds, program]);
+
+  // Check SiG deposit status on-chain for all operator pools (PARALLEL for performance)
+  useEffect(() => {
+    console.log('[Dashboard useEffect] Checking SiG deposits...', {
+      hasProgram: !!program,
+      hasPublicKey: !!publicKey,
+      hasCheckFn: !!checkSkinInGameDeposited,
+      dbPoolsLength: dbPools.length,
+      sigDepositStatusKeys: Object.keys(sigDepositStatus),
+    });
+
+    if (!program || !publicKey || !checkSkinInGameDeposited) {
+      console.log('[Dashboard useEffect] Skipping - missing dependencies');
+      return;
+    }
+
+    const checkAllDeposits = async () => {
+      // Filter pools that need checking
+      const poolsToCheck = dbPools.filter((dbPool) => sigDepositStatus[dbPool.poolPda] === undefined);
+
+      if (poolsToCheck.length === 0) {
+        console.log('[Dashboard] No pools to check - all already verified');
+        return;
+      }
+
+      console.log('[Dashboard] Checking SiG deposits in parallel for', poolsToCheck.length, 'pools');
+
+      // Check ALL deposits in PARALLEL using Promise.allSettled
+      const results = await Promise.allSettled(
+        poolsToCheck.map(async (dbPool) => {
+          const poolPda = new PublicKey(dbPool.poolPda);
+          const deposited = await checkSkinInGameDeposited(poolPda, publicKey);
+          return { poolPda: dbPool.poolPda, deposited, name: dbPool.name };
+        })
+      );
+
+      // Update state with all results
+      const newStatuses: Record<string, boolean> = {};
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          const { poolPda, deposited, name } = result.value;
+          console.log('[Dashboard] ✅ SiG deposit status:', name, 'deposited:', deposited);
+          newStatuses[poolPda] = deposited;
+        } else {
+          console.error('[Dashboard] ❌ Failed to check SiG deposit for', poolsToCheck[idx].poolPda, result.reason);
+          // Set to false on error (account doesn't exist = not deposited)
+          newStatuses[poolsToCheck[idx].poolPda] = false;
+        }
+      });
+
+      if (Object.keys(newStatuses).length > 0) {
+        setSigDepositStatus((prev) => ({ ...prev, ...newStatuses }));
+      }
+    };
+
+    if (dbPools.length > 0) {
+      checkAllDeposits();
+    } else {
+      console.log('[Dashboard] No DB pools to check');
+    }
+  }, [dbPools, checkSkinInGameDeposited, publicKey, sigDepositStatus, program]);
 
   // Merge DB + localStorage: DB is canonical, localStorage supplements missing fields.
   // Dedup by poolPda so pools saved to both sources appear only once.
@@ -660,9 +878,45 @@ export default function DashboardPage() {
 
       const dbMapped: DisplayPool[] = dbPools.map((p) => {
         const local = localPools.find((lp) => lp.poolStatePda === p.poolPda);
+
+        // DEBUG: Check if we found the local pool
+        if (local) {
+          console.log('[Dashboard Debug] Found local pool for:', p.poolPda.slice(0, 8), 'sigDepositTx:', local.sigDepositTx);
+        } else {
+          console.log('[Dashboard Debug] NO local pool found for:', p.poolPda.slice(0, 8));
+          console.log('[Dashboard Debug] Available localPools PDAs:', localPools.map(lp => lp.poolStatePda.slice(0, 8)));
+        }
+
+        // Derive operator ATA if missing: try localStorage first, then derive from mint
+        let operatorAta = local?.operatorAta;
+        console.log('[Dashboard Debug] Pool:', p.name, JSON.stringify({
+          poolPda: p.poolPda,
+          mintAddress: p.mintAddress,
+          localAta: local?.operatorAta,
+          localPoolId: local?.poolId,
+          localSigDepositTx: local?.sigDepositTx,
+          onChainPoolId: onChainPoolIds[p.poolPda],
+          finalPoolId: local?.poolId ?? onChainPoolIds[p.poolPda] ?? null,
+          skinInGame: p.skinInGame,
+        }, null, 2));
+
+        if (!operatorAta && p.mintAddress) {
+          try {
+            const mintPk = new PublicKey(p.mintAddress);
+            const ata = getAssociatedTokenAddressSync(mintPk, publicKey);
+            operatorAta = ata.toBase58();
+            console.log('[Dashboard Debug] Derived ATA:', operatorAta);
+          } catch (err) {
+            console.error('[Dashboard Debug] Failed to derive ATA:', err);
+          }
+        }
+
+        // On-chain deposit status is source of truth
+        const depositedOnChain = sigDepositStatus[p.poolPda] ?? false;
+
         return {
           key: p.poolPda,
-          poolId: local?.poolId ?? null,
+          poolId: local?.poolId ?? onChainPoolIds[p.poolPda] ?? null,
           poolStatePda: p.poolPda,
           name: p.name,
           location: p.location ?? local?.location ?? '',
@@ -682,9 +936,10 @@ export default function DashboardPage() {
           operator: p.specialist.walletAddress ?? wallet,
           createdAt: p.createdAt,
           sig: local?.sig,
-          sigDepositTx: local?.sigDepositTx,
+          // Override sigDepositTx with on-chain status (blockchain is source of truth)
+          sigDepositTx: depositedOnChain ? (local?.sigDepositTx || 'confirmed') : undefined,
           vault: local?.vault,
-          operatorAta: local?.operatorAta,
+          operatorAta,
         };
       });
 
@@ -694,7 +949,7 @@ export default function DashboardPage() {
 
       return [...dbMapped, ...localOnly];
     } catch { return []; }
-  }, [publicKey, dbPools, localVersion]);
+  }, [publicKey, dbPools, localVersion, onChainPoolIds, sigDepositStatus]);
 
   // DB investments fetched asynchronously
   type DbInvestment = Extract<Awaited<ReturnType<typeof getInvestmentsAction>>, { success: true }>['data'][number];
@@ -909,6 +1164,8 @@ export default function DashboardPage() {
                   onSigDeposited={() => {
                     // Force memo to re-read localStorage (sigDepositTx now set)
                     setLocalVersion((v) => v + 1);
+                    // Mark deposit as confirmed on-chain (source of truth)
+                    setSigDepositStatus((prev) => ({ ...prev, [pool.poolStatePda]: true }));
                     // Also re-fetch DB pools in case skinInGame was updated
                     if (!publicKey) return;
                     getPoolsAction().then((res) => {
