@@ -20,6 +20,8 @@ BlockFlip enforces builder accountability on-chain. No pool goes live until the 
 
 Beyond that mechanic, BlockFlip is an RWA protocol that tokenizes the full lifecycle of property flipping. We connect experienced builders with global USDC liquidity. Investors fund renovation projects, track construction milestones on-chain, and receive their share of the sale profit in cycles of under 6 months.
 
+Our architecture is designed for high-concurrency property launches, leveraging gRPC-ready state management to ensure real-time updates of the 'Skin-in-the-game' status across the global marketplace.
+
 ## ✨ Key Features & Innovation
 
 * **On-Chain Skin-in-the-Game:** A newly created pool stays `Pending` until the builder deposits a mandatory 5% guarantee from their own capital. The Anchor program enforces this state transition — the pool cannot accept investor capital before the operator commits.
@@ -43,13 +45,25 @@ Beyond that mechanic, BlockFlip is an RWA protocol that tokenizes the full lifec
 * **Language:** Rust
 * **Key Programs:** SPL Token, System Program
 
+* 🚀 How to Run Locally
+
+1. Clone the repository:
+   git clone [URL-DO-REPOSITÓRIO]
+2. Install dependencies:
+   npm install
+3. Configure environment variables:
+   Create a .env.local file with your RPC URL (Devnet).
+4. Run the development server:
+   npm run dev
+5. Access http://localhost:3000
+
 ### Frontend (Web3 Client)
 * **Framework:** Next.js 15 (App Router)
 * **Styling:** Tailwind CSS v4, shadcn/ui
 * **Web3 Integration:** `@solana/web3.js`, `@solana/spl-token`, `@solana/wallet-adapter-react`
 * **i18n:** `next-intl` (pt-BR, en-US, es-ES)
 
-## ⚠️ Known Limitations (Devnet Scope)
+## ⚠️ Roadmap & Known Limitations (Devnet Scope)
 
 This submission represents a working prototype of the core protocol primitives. The following are intentionally out of scope for this hackathon build:
 
@@ -59,9 +73,9 @@ This submission represents a working prototype of the core protocol primitives. 
 
 ## 🎥 Pitch & Demo
 
-* **Pitch Deck:** [Link to Presentation]
-* **Video Demo (3 mins):** [Link to YouTube/Vimeo]
-* **Live App (Devnet):** [Link to Vercel/Production URL]
+* **Pitch Deck:** https://www.loom.com/share/82d285a7e58041c4830de262e915ffe5
+* **Video Demo (3 mins):** https://www.loom.com/share/f3cb7e4d5939493db33010546f62dc04
+* **Live App (Devnet):** https://blockflip.finance
 
 ## ⚖️ License
 
